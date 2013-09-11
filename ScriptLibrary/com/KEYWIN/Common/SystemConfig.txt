@@ -1,0 +1,185 @@
+//取得站台共用參數
+//類似Web.config檔案
+
+//取得目前站台的執行環境
+function getWebMode(){
+	//0: TIS Test 開發機(Keywin開發人員請確定開發時此數值為0)
+	//1: TIS Prod 正式機
+	return 0;
+}
+function getConfig(ConfigName){
+	//以下Config值請系統建置者自行定義
+	var testMailReceiver = "evan_yeh@keywin.co";
+	var mode = getWebMode();
+	switch(ConfigName){
+		case "WebRootURL":
+			//return "http://192.168.35.39:8080/WebAgenda/";break;
+      return Server.getServerEnv().getWebAgendaURL();break;
+    case "TempFileFolder":
+			return "C:\\Agentflow\\export\\";break;
+		case "AttachFilePath":
+			return "C:\\Agentflow\\AttachFile\\";break;
+		//...Start...MP機種量試系統通知收件者設定
+		case "MP_MailList_結案通知信_TISQA":
+			if(mode==0)
+				return testMailReceiver;
+			else
+				return "samson@tecoimage.com.tw; eric_yu@tecoimage.com.tw;evan_yang@tecoimage.com.tw; bevis_chen@tecoimage.com.tw; herber_wu@tecoimage.com.tw";
+			break;
+		case "MP_MailList_發行通知信":
+			if(mode==0)
+				return testMailReceiver;
+			else
+				return "danny_kuo@tecoimage.com.tw; benny_ho@tecoimage.com.tw";
+			break;
+		case "MP_MailList_量試通知信_CQC":
+			if(mode==0)
+				return testMailReceiver;
+			else
+				return "dtis_2630@dg.tecoimage.com.cn";
+			break;
+		//...End...	MP機種量試系統通知收件者設定
+		//...Start...國外出差系統通知收件者設定
+		case "國外出差通知信件-通知課部":
+			if(mode==0)
+				return testMailReceiver;
+			else
+				return "bell_hsu@tecoimage.com.tw;linda_lee@tecoimage.com.tw";
+			break;
+		case "國外出差通知信件-專案開發本部群組":
+			if(mode==0)
+				return testMailReceiver;
+			else
+				return "calvin_lu@tecoimage.com.tw";
+			break;
+		case "國外出差通知信件-CHQ群組":
+			if(mode==0)
+				return testMailReceiver;
+			else
+				return "jc_lai@tecoimage.com.tw;jacky_chen@tecoimage.com.tw;bell_sun@tecoimage.com.tw;beareric_yu@tecoimage.com.tw;joey_liu@tecoimage.com.tw;rex_chang@tecoimage.com.tw";
+			break;
+		case "國外出差通知信件-TK群組":
+			if(mode==0)
+				return testMailReceiver;
+			else
+				return "jc_lai@tecoimage.com.tw;jacky_chen@tecoimage.com.tw;joey_liu@tecoimage.com.tw;rex_chang@tecoimage.com.tw";
+			break;
+		case "國外出差通知信件-STIS群組":
+			if(mode==0)
+				return testMailReceiver;
+			else
+				return "charles_lin@tecoimage.com.tw;gibson_cheng@tecoimage.com.tw;steven_liu@tecoimage.com.tw;gene_hsieh@tecoimage.com.tw";
+			break;
+		case "國外出差通知信件-SANKYO群組":
+			if(mode==0)
+				return testMailReceiver;
+			else
+				return "Tinna_chiu@tecoimage.com.tw";
+			break;
+		case "國外出差通知信件-東欣群組":
+			if(mode==0)
+				return testMailReceiver;
+			else
+				return "Jason_hu@tecoimage.com.tw;wendy_wen@tecopro.com.cn;chloe_huang@tecopro.com.cn";
+			break;
+		case "國外出差通知信件-東佳群組":
+			if(mode==0)
+				return testMailReceiver;
+			else
+				return "Jason_hu@tecoimage.com.tw;wendy_wen@tecopro.com.cn";
+			break;
+		//...End...	國外出差系統通知收件者設定
+		// Add by Luke 20130426 
+		case "國外出差通知信件-通知行政經辦人":
+			if(mode==0)
+				return testMailReceiver;
+			else
+				return "kook_yeh@tecoimage.com.tw;jackie_lai@tecoimage.com.tw;David_Huang@tecoimage.com.tw;lance_lee@tecoimage.com.tw";
+			break;
+    default:
+			return "";
+			break;
+	}
+}
+
+function getFolderName(formName) {
+   switch(formName){
+		case "部品零件承認請求單":
+			return "部品零件承認請求單機構";
+		case "設計變更申請單":
+			return "Engineering Change Notice";
+		case "MP機種量試請求單":
+			return "MP機種量試請求單";
+		case "Production Order Notice":
+			return "東友製造通知單";
+		//....START....20130410 MODI Evan Mantis 765(暫存檔路徑修正)
+		case "材料核價申請單":
+			return "材料核價申請單";
+		//....END....20130410 MODI Evan Mantis 765(暫存檔路徑修正)
+		default:
+			return "";
+	}
+}
+
+//取得SAP MANDT
+function getSAPMandt(){
+	//正式機：500
+    //測試機：230
+	var mode = getWebMode();
+	return (mode==0) ? "230" : "500";
+}
+function getLogLevel() {
+	//iLogLevel: 0:Log everything, 1:Log important, 2:Log Critical Error
+	return 1;
+}
+//依據PR自訂Log等級，將傳入的字串顯示在console
+function logInfo(strInfo, iLogLevel) {
+    loadLibrary("com.KEYWIN.Common.FormUtil"); //呼叫getContext來判斷是哪一端呼叫logInfo
+    if (iLogLevel >= getLogLevel())
+        java.lang.System.out.println(strInfo);
+    //....START....20130325 ADD Evan Mantis 745
+    if (iLogLevel == 2 && getWebMode() != 0) {
+        var objContext = getContext(); //呼叫getContext來判斷是哪一端呼叫logInfo
+        var From = objContext.getMember("administrator").getEmail(); // Sender e-mail
+        var To = objContext.getMember("administrator").getEmail(); // Receiver e-mail
+		To += "mos_chen@keywin.co";
+        var SubjectServer = "【TIS電子簽核系統錯誤通知信(Server端錯誤)】"; // Mail標題(Server端呼叫)
+        var SubjectClient = "【TIS電子簽核系統錯誤通知信(Client端錯誤)】"; //Mail標題(Client端呼叫)
+        var ErrorTextFromClient = "ErrorTextFromClient=" + strInfo; // Mail內文(Client端呼叫)
+        var ErrorTextFromServer = "ErrorTextFromServer=" + strInfo; // Mail內文(Server端呼叫)
+
+        if (typeof (Server) != "undefined") { //若是Server呼叫logInfo
+            try {
+                Server.addErrLog("LogInfoException(Server)=" + strInfo); //寫log								
+                Server.sendHTMLMailExt(From, To, "", SubjectServer, ErrorTextFromServer, null, MyTask); //寄出通知信給系統管理者		
+            } catch (e) {
+                java.lang.System.out.println("MailSendError(Server) : " + e);
+            }
+        } else { //若是Client呼叫logInfo
+            try {
+                Client.addErrLog("LogInfoException(Client)=" + strInfo); //寫log
+                Client.sendHTMLMail(From, To, "", SubjectClient, ErrorTextFromClient); //寄出通知信給系統管理者
+            } catch (e) {
+                java.lang.System.out.println("MailSendError(Client) : " + e);
+            }
+        }
+    }
+    //....END....20130325 ADD Evan Mantis 745
+}
+
+//是否要傳送Programmer自訂的Mail
+//注意：在關卡中設定在"時間控制"的email無法用這個開關來控制
+//function isSendMail() {
+//	return false;
+//}
+
+function getAttachFilePath(formName) {
+    var path = getConfig("AttachFilePath");
+	var folder = getFolderName(formName);
+	var ret = "";
+
+	if (path.equals("") || folder.equals("")) ret = "";
+	else ret = path + "\\" + folder + "\\";
+	return ret;
+}
+

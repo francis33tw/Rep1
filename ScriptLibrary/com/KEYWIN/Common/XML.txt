@@ -1,0 +1,91 @@
+function getCurrTime(isGMT) {
+    var cal = new java.util.Calendar.getInstance();
+    var format = new Packages.java.text.SimpleDateFormat();
+    
+    format.applyPattern("yyyy/MM/dd HH:mm:ss");
+    if (isGMT) {
+	    cal = new java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT"));
+	    format.setTimeZone(java.util.TimeZone.getTimeZone("GMT"));
+    }
+    
+    return format.format(cal.getTime()).toString();
+}
+
+function insertXmlLog(xml, slipNO) {
+    xml = Packages.org.apache.commons.lang.StringEscapeUtils.escapeSql(xml);
+    var vecXMLContent = cutXMLContent(xml);
+    var sql = "";
+
+    if (vecXMLContent.size() > 0) {
+        var vec = Server.SQLloadValue("SELECT * FROM syn_xml WHERE formNo = '"+slipNO+"'");
+        if (vec.size() > 0) {
+	        sql = "UPDATE syn_xml SET strXML = TO_CLOB('" + vecXMLContent.elementAt(0) + "') WHERE formNo = '"+slipNO+"'";
+	        Server.SQLupdateValue(sql);
+        }
+        else {
+	        sql = "INSERT INTO syn_xml(formNo,strXML,line_no,create_date) values ('" + slipNO + "', TO_CLOB('" + vecXMLContent.elementAt(0) + "'),'1',sysdate)";
+	        Server.SQLinsertValue(sql);
+        }
+    
+        for (var i=1; i<vecXMLContent.size(); i++) {
+	        sql = "UPDATE syn_xml SET strXML = strXML || TO_CLOB('" + vecXMLContent.elementAt(i) + "') WHERE formNo = '"+slipNO+"'";
+	        Server.SQLupdateValue(sql);
+        }
+    }	
+}
+
+function cutXMLContent(xml) {
+    var oraLen = 4000;
+    var vecXML = new java.util.Vector();
+    var strXML = new java.lang.StringBuffer(xml).toString();
+    var xmlLen = strXML.length();
+    var xmlBytesLen = strXML.getBytes().length;
+    var xmlOraLen = xmlBytesLen + (xmlBytesLen - xmlLen);
+    var firstIndex = 0;
+    var lastIndex = 0;
+    var count = Math.floor(xmlOraLen/oraLen) + 1;
+	
+    //java.lang.System.out.println("^^^^^^^^^^" + xmlLen + "^^^" + xmlBytesLen + "^^^" + xmlOraLen + "^^^^^^^^^^^^");
+    for (var i=0; i<count; i++) {
+	    if (i == count - 1) {
+	        vecXML.addElement(strXML.substring(firstIndex));
+	    }
+	    else {
+	        var subXML = strXML.substring(firstIndex,firstIndex + oraLen);
+	        xmlLen = subXML.length();
+	        xmlBytesLen = subXML.getBytes().length;
+	        xmlOraLen = xmlBytesLen + (xmlBytesLen - xmlLen);
+	        lastIndex = firstIndex + oraLen - (xmlOraLen - oraLen);
+			
+	        vecXML.addElement(strXML.substring(firstIndex,lastIndex));
+	        firstIndex = lastIndex;
+	    }
+    }
+    //java.lang.System.out.println("^^^^^^^^^^ cut into " + vecXML.size() + " ^^^^^^^^^^^^");
+	
+    return vecXML;
+}
+
+function callXmlWebService(xml) {
+    var wsURL = "";
+    var strSQL = "select MappingValue from SYN_BPM_PARAMETERS where Code='WebMethodURL'";
+    var objRS = Server.SQLloadValue(strSQL);
+    
+    if (objRS.size() > 0) {
+	    wsURL = objRS.get(0).get("MappingValue");
+    }
+    
+    return new Packages.com.genesis.bpmxepds.CallFISBean().callFISControl(wsURL, xml);
+}
+
+//function callXmlWebService(bu, xml) {
+//	var wsURL = "http://10.101.1.51:5555";
+//	var prjID = MyTask.getProjectID();
+//	var sql = "SELECT dataValue FROM syn_parameter WHERE prjID = '" + prjID + "' AND datakey = '" + bu + "'";
+//	var vec = Server.SQLloadValue(sql);
+//	if (vec.size() > 0) {
+//		wsURL = vec.get(0).get("dataValue");
+//	}
+//	wsURL += "/invoke/synnex.eai.bg.oa/One2One";
+//	return new Packages.com.genesis.bpmxepds.CallFISBean().callFISControl(wsURL, xml);
+//}

@@ -1,0 +1,137 @@
+function getApplierCompanyCodeData(hdnApplierID) {
+    var strSQL = "";
+    strSQL += "SELECT COMPANY_CODE";
+    strSQL += " FROM SYN_EMPLOYEE_INFO";
+    strSQL += " WHERE EMP_NO='" + hdnApplierID + "'";
+
+    return Client.SQLloadValue(strSQL);
+}
+function getAuthDocTypeByFillMemberDeptID(hdnApplierDeptID){
+	    var strSQL = "";
+    strSQL += "SELECT B.DOC_DEPT_CODE";
+    strSQL += " FROM SYN_SEAL_DEPT_RIGHT A";
+    strSQL += " JOIN SYN_SEAL_DEPT B ON A.DOC_DEPT_CODE=B.DOC_DEPT_CODE";
+    strSQL += " WHERE A.DEPT_ID='"+hdnApplierDeptID+"'";
+    strSQL += " AND A.DOC_TYPE='1'";
+	strSQL += " AND A.DOC_CODE='2'";
+	 return Client.SQLloadValue(strSQL);
+
+}
+function getOpenWinMemList(DeptID,hdnBU){
+        var strSQL = "";
+        strSQL =  "SELECT ";
+        strSQL += " RTRIM (XMLAGG (XMLELEMENT (\"ASSIGNER\", ID || ',')).EXTRACT ('//text()'),',') MEMLISTS";
+        strSQL += " FROM ";
+        strSQL += "(select DISTINCT M.ID, M.UserName, D.Name, M.MemID, D.DepID";
+		strSQL += " FROM MEM_GENINF M LEFT JOIN ROL_MEM R ON M.MEMID = R.MEMID";
+		strSQL += " LEFT JOIN ROL_GENINF RG ON R.ROLID = RG.ROLID  ";
+		strSQL += " LEFT JOIN DEP_GENINF D ON RG.DEPID = D.DEPID  ";
+		strSQL += " LEFT JOIN SYN_EMPLOYEE_INFO E ON M.ID = E.EMP_NO  ";
+		strSQL += " WHERE D.DepID like N'%"+DeptID+"%'  ";
+		strSQL += "AND M.RESIGN !='true' ";
+		strSQL += "AND M.INVISIBLE != 'true'  ";
+		strSQL += "AND M.DENIEDLOGIN !='true' ";			
+		strSQL += "AND D.NAME NOT LIKE '*%' ";
+		strSQL += "AND D.ID = '1' ";
+		strSQL += "AND D.RESPON LIKE '%BU="+hdnBU+"%') ";
+
+        return Client.SQLloadValue(strSQL);
+}
+
+function getLegalInChargeRsList(DeptID,hdnBU){
+        var strSQL = "";
+        strSQL =  "SELECT ";
+        strSQL += " RTRIM (XMLAGG (XMLELEMENT (\"ASSIGNER\", ID || ',')).EXTRACT ('//text()'),',') MEMLISTS";
+        strSQL += " FROM ";
+        strSQL += "(select DISTINCT M.ID, M.UserName, D.Name, M.MemID, D.DepID";
+		strSQL += " FROM MEM_GENINF M LEFT JOIN ROL_MEM R ON M.MEMID = R.MEMID";
+		strSQL += " LEFT JOIN ROL_GENINF RG ON R.ROLID = RG.ROLID  ";
+		strSQL += " LEFT JOIN DEP_GENINF D ON RG.DEPID = D.DEPID  ";
+		strSQL += " LEFT JOIN SYN_EMPLOYEE_INFO E ON M.ID = E.EMP_NO  ";
+		strSQL += " WHERE D.DepID like N'%"+DeptID+"%'  ";
+		strSQL += "AND M.RESIGN !='true' ";
+		strSQL += "AND M.INVISIBLE != 'true'  ";
+		strSQL += "AND M.DENIEDLOGIN !='true' ";			
+		strSQL += "AND D.NAME NOT LIKE '*%' ";
+		strSQL += "AND D.ID = '1' ";
+		strSQL += "AND D.RESPON LIKE '%BU="+hdnBU+"%') ";
+
+        return Client.SQLloadValue(strSQL);
+}
+
+
+
+
+function getCboApplyTypeData(Type) {
+    var strSQL = "";
+    strSQL += "SELECT ITEM2 AS VALUE,MappingValue AS TEXT";
+    strSQL += " FROM SYN_BPM_PARAMETERS";
+    strSQL += " WHERE CODE='LegalDSApplyItem'";
+    strSQL += " AND item1='" + Type + "'";
+    strSQL += " ORDER BY orderindex";
+    return Client.SQLloadValue(strSQL)
+}
+
+
+
+function getCboApplyTypeContractTypeData() {
+    var strSQL = "";
+    strSQL += "SELECT orderindex AS VALUE,MappingValue AS TEXT";
+    strSQL += " FROM SYN_BPM_PARAMETERS";
+    strSQL += " WHERE CODE='LegalDSContractType'";
+    strSQL += " ORDER BY orderindex";
+    return Client.SQLloadValue(strSQL);
+}
+
+function getLegalSignerListData(Group) {
+    var strSQL = "";
+    strSQL += "SELECT MappingValue";
+    strSQL += " FROM SYN_BPM_PARAMETERS";
+    strSQL += " WHERE Code = '" + Group + "'";
+    return Client.SQLloadValue(strSQL);
+}
+
+function getApplyCompanyData() {
+    var strSQL = "";
+    strSQL += "SELECT orderindex AS VALUE,MappingValue AS TEXT";
+    strSQL += " FROM SYN_BPM_PARAMETERS";
+    strSQL += " WHERE CODE='LegalDSCompany'";
+    strSQL += " ORDER BY orderindex";
+    return Client.SQLloadValue(strSQL);
+}
+
+
+function getStampTypeForDocData(Type) {
+    var strSQL = "";
+    strSQL += "SELECT orderindex AS VALUE,MappingValue AS TEXT";
+    strSQL += " FROM SYN_BPM_PARAMETERS";
+    strSQL += " WHERE code='LegalDSStampType' AND item1='" + Type + "' ";
+    strSQL += " ORDER BY orderindex";
+    return Client.SQLloadValue(strSQL);
+}
+
+
+function getHandleTypeData(Type) {
+    var strSQL = "";
+    strSQL += "SELECT orderindex AS VALUE,MappingValue AS TEXT";
+    strSQL += " FROM SYN_BPM_PARAMETERS";
+    strSQL += " WHERE code='LegalDSHandleType' AND item1='" + Type + "' ";
+    strSQL += " ORDER BY orderindex";
+    return Client.SQLloadValue(strSQL);
+}
+
+function getComponentLocationData(statusName) {
+    var strSQL = "";
+    strSQL += "SELECT COMPNAME,X,Y";
+    strSQL += " FROM SYN_LegalDynamicComp";
+    strSQL += " WHERE status='" + statusName + "'";
+    return Client.SQLloadValue(strSQL);
+}
+
+function getIsMgrOrNotData(FillID) {
+    var strSQL = "";
+    strSQL += "SELECT MGRCODE";
+    strSQL += " FROM SYN_EMPLOYEE_INFO";
+    strSQL += " WHERE EMP_NO ='" + FillID + "'";
+    return Client.SQLloadValue(strSQL);
+}

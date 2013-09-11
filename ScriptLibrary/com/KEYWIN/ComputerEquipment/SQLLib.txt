@@ -1,0 +1,64 @@
+loadLibrary("com.KEYWIN.Common.FormUtil");
+
+//取得人員分機
+function getOfficePhone(strMemID){
+	var strSQL = "SELECT OfficePhone FROM Mem_GenInf where MemID ='" + strMemID + "'";
+	var rsTel = getContext().SQLloadValue(strSQL);
+	var phone = "";
+	
+	if (rsTel.size() > 0){
+		phone = rsTel.get(0).get("OfficePhone");
+    }
+
+    return phone;	
+}
+
+//取得所有作業負責人
+function getOPMemAllData(strPara){
+	var strSQL =  "SELECT   FORMTYPE, " + 
+                  "RTRIM (XMLAGG (XMLELEMENT (\"ASSIGNER\", ASSIGNER || ',')).EXTRACT ('//text()'),',') OPMemLists " +
+                  "FROM     SYN_AR_ASSIGNER " + 
+                  "GROUP BY FORMTYPE " +
+                  "HAVING   FORMTYPE = '" + strPara + "'";
+    
+	return getContext().SQLloadValue(strSQL);
+}
+
+//取得[作業審核]關卡負責人OPAuditor
+function getOPAuditor(strParaOPAuditor){
+	var strSQL = "select * from SYN_BPM_PARAMETERS WHERE Code='" + strParaOPAuditor + "'";
+	var rsOPA = getContext().SQLloadValue(strSQL);
+	var opAuditor = "";
+	
+	if (rsOPA.size()>0) {
+		opAuditor = rsOPA.get(0).get("MappingValue");			
+	}
+	
+	return opAuditor;
+}
+
+//取得專案BU
+function getPrjBU(prjID) {
+    var strSQL = "select datavalue from syn_parameter where prjid = '" + prjID + "' and datakey = 'BU' ";
+	var rsBU = getContext().SQLloadValue(strSQL); 
+	var bu = "";
+	
+	if (rsBU.size() > 0) {
+	    bu = rsBU.get(0).get("datavalue");
+	}
+	
+	return bu;
+}
+
+//取得人員ORG_Tree
+function getOrgTree(ID) {
+    var strSQL = "select ORG_TREE_TYPE from Syn_EMPLOYEE_INFO where EMP_NO = '" + ID + "' ";
+    var rsOrg = getContext().SQLloadValue(strSQL);
+	var org = "";
+	
+	if (rsOrg.size() > 0){
+		org = rsOrg.get(0).get("ORG_TREE_TYPE");
+	}
+	
+	return org;
+}

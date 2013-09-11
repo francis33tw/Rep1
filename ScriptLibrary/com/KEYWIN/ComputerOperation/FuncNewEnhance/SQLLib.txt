@@ -1,0 +1,8 @@
+function getJIRAModule(strModuleName){
+	loadLibrary("com.KEYWIN.Common.FormUtil");
+	var sql = "select mappingValue, ITEM1 from SYN_BPM_PARAMETERS where code= 'CPTSTJiraModule' ";
+	if(strModuleName != "")
+		sql += " and ITEM1= '"+strModuleName+"'";
+	sql += " order by OrderIndex ";
+	return getContext().SQLloadValue(sql);
+}

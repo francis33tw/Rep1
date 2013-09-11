@@ -1,0 +1,112 @@
+loadLibrary("com.KEYWIN.Common.XML");
+loadLibrary("com.KEYWIN.Common.SystemConfig");
+loadLibrary("com.KEYWIN.ComputerOperation.SQLLib");
+function doExportXML(successFlowTo, failFlowTo) {
+	Server.addExeLog("doExportXML Start !!!");
+	//表單內容
+	var artIns = MyTask.getArtInstance();
+	var labReqNO = artIns.getAppValue("labFormNo"); //表單編號
+    var txtDepartment = artIns.getAppValue("txtDepartment");
+	var txtApplierID = artIns.getAppValue("txtApplierID");
+	var labApplierName = artIns.getAppValue("labApplierName");
+	var bu = artIns.getAppValue("hdnBU");
+	var senderID = "OA_BPM" + bu;
+	var receiverID = "OA_JIRA";
+	var localTime = getCurrTime(false);
+	var gmtTime = getCurrTime(true);
+	var hdnModuleValues = artIns.getAppValue("hdnModuleValues");
+	var hdnAssignerMID = artIns.getAppValue("hdnAssignerMID");
+	var hdnApplierMID = artIns.getAppValue("hdnApplierMID");
+	var strApplicant = artIns.getAppValue("txtApplierID") + "-" + artIns.getAppValue("hdnApplierName");
+	var strApplicantUnit = artIns.getAppValue("labApplierDep");
+	//開始寫XML內容
+	var expXml = new java.lang.StringBuffer("<?xml version='1.0' encoding='UTF-8'?>");
+	expXml.append("<toJiraResponseRequest>");
+	expXml.append("<messageHeader>");
+	expXml.append("<senderID>").append(senderID).append("</senderID>");
+	expXml.append("<receiverID>").append(receiverID).append("</receiverID>");
+	expXml.append("<senderRegion />");
+	expXml.append("<messageVersion>1.1</messageVersion>");
+	expXml.append("<messageID>GJLNIUZLYIJH</messageID>");
+	expXml.append("<sessionID>GJLNIUZLYIJH</sessionID>");
+	expXml.append("<sessionKeepAlive>1</sessionKeepAlive>");
+	expXml.append("<gmtTimeStamp>").append(gmtTime).append("</gmtTimeStamp>");
+	expXml.append("<localTimeStamp>").append(localTime).append("</localTimeStamp>");
+	expXml.append("<systemCredentials>");
+	expXml.append("<senderName />");
+	expXml.append("<senderAuthenticator />");
+	expXml.append("</systemCredentials>");
+	expXml.append("<messageTypeList>");
+	expXml.append("<messageType>");
+	expXml.append("<messageTypeName />");
+	expXml.append("<messageTypeValue />");
+	expXml.append("</messageType>");
+	expXml.append("</messageTypeList>");
+	expXml.append("</messageHeader>");
+	expXml.append("<messageContent>");
+	expXml.append("<toJiraReqDataList>");
+	
+	var dsModule = artIns.getAppDataMap().get("tabJIRAModule");
+	for(var i=0; i<dsModule.size(); i++){
+		var strJiraNO = dsModule.get(i).get("ITEM1");
+		var strModuleName = dsModule.get(i).get("ITEM3");
+		expXml.append("<toJiraReqDataVO>");
+		expXml.append("<type>A</type>");//txtProjectName
+		expXml.append("<jiraNO>").append(strJiraNO).append("</jiraNO>");Server.addExeLog("doExportXML 57");
+		expXml.append("<manager>").append(getLDAPIDByMemID(hdnAssignerMID)).append("</manager>");Server.addExeLog("doExportXML 58");
+		expXml.append("<reporter>").append(getLDAPIDByMemID(hdnApplierMID)).append("</reporter>");Server.addExeLog("doExportXML 59");
+		expXml.append("<arNumbers>").append(labReqNO).append("</arNumbers>");Server.addExeLog("doExportXML 60");
+		expXml.append("<applicationCategory><![CDATA[功能新增/強化]]></applicationCategory>");Server.addExeLog("doExportXML 61");
+		expXml.append("<summary>").append(labReqNO).append("</summary>");Server.addExeLog("doExportXML 62");
+		expXml.append("<applicant>").append(strApplicant).append("</applicant>");Server.addExeLog("doExportXML 63");
+		expXml.append("<applicantUnit>").append(strApplicantUnit).append("</applicantUnit>");Server.addExeLog("doExportXML 64");
+		expXml.append("<applicantDate>").append(artIns.getAppValue("labApplyDate")).append("</applicantDate>");Server.addExeLog("doExportXML 65");
+		expXml.append("<projectName>").append(artIns.getAppValue("txtModuleNames")).append("</projectName>");Server.addExeLog("doExportXML 66");
+		expXml.append("<module>").append(strModuleName).append("</module>");Server.addExeLog("doExportXML 67");
+		expXml.append("<contactMIS>").append(artIns.getAppValue("txtMISMember")).append("</contactMIS>");Server.addExeLog("doExportXML 68");
+		expXml.append("<completeDate>").append(artIns.getAppValue("calEFinishDate")).append("</completeDate>");Server.addExeLog("doExportXML 69");
+		expXml.append("<demandCategory>").append(artIns.getAppValue("cboReqType")).append("</demandCategory>");Server.addExeLog("doExportXML 70");
+		expXml.append("<demandItem></demandItem>");Server.addExeLog("doExportXML 57");Server.addExeLog("doExportXML 71");
+		expXml.append("<demandContent><![CDATA[").append(artIns.getAppValue("tarDemand")).append("]]></demandContent>");Server.addExeLog("doExportXML 57");Server.addExeLog("doExportXML 72");
+		
+		//附件清單
+		expXml.append("<attachFileList>");
+		var attUploadFile=artIns.getAppValue("attUploadFile");  
+		var filenum=attUploadFile.split("\n\n");  
+		var filePath = "";
+		for (var j=0; j < filenum.length; j++){    
+			var filelist=filenum[j].split("\t\t");    
+			var strFileName = filelist[0];
+			var strFileID = filelist[1];
+			var strInsID = filelist[4];
+			//ITEM名要寫【附件上傳】應用程式中附件的元件ITEM
+			var strFilePath = "http://" + Server.getServerEnv().getServerHost()+ ":8080/WebAgenda"+"/download?fileID="+strFileID+"&modelName=attUploadFile&itemID=ITEM3&artInsID=" + strInsID;
+			expXml.append("<attachFile>");
+			expXml.append("<attachFileName>").append(strFileName).append("</attachFileName>");Server.addExeLog("doExportXML 84");
+			expXml.append("<attachFileURL><![CDATA[ ").append(strFilePath).append("]]></attachFileURL>");Server.addExeLog("doExportXML 85");
+			expXml.append("</attachFile>");
+		}
+		expXml.append("</attachFileList>");
+		expXml.append("</toJiraReqDataVO>");
+	}
+	expXml.append("</toJiraReqDataList>");
+	expXml.append("</messageContent>");
+	expXml.append("</toJiraResponseRequest>");
+		
+	var xmlStr = expXml.toString();
+	Server.addExeLog("doExportXML xml : " + xmlStr);
+	
+	//寫資料庫Log
+	insertXmlLog(xmlStr, labReqNO);
+	
+	var rCode = 200;
+	//呼叫Web method
+	if(getWebMode() == 1) rCode = callXmlWebService(xmlStr);
+	Server.addExeLog("doExportXML callXmlWebService rCode : " + rCode);
+	Server.addExeLog("doExportXML End !!!");
+	
+	if(rCode != 200){
+		return failFlowTo; 
+	}
+	return successFlowTo;
+}

@@ -1,0 +1,65 @@
+loadLibrary("com.KEYWIN.Common.FormUtil");
+
+function isRoleUser(ID) {
+    var strSQL = "select role_type_manager from syn_ar_role_type where role_type_manager='" + ID + "'";
+	var objRS = getContext().SQLloadValue(strSQL);
+	var ret = false;
+	
+	if (objRS.size() > 0) ret = true;
+	
+	return ret;
+}
+
+function getOPAuditor(strParaOPAuditor){
+	var strSQL = "select MappingValue from SYN_BPM_PARAMETERS WHERE Code='" + strParaOPAuditor + "'"
+	var objRS = getContext().SQLloadValue(strSQL);
+	var opAuditor = "";
+	
+	if(objRS.size()>0){
+		opAuditor = objRS.elementAt(0).get("MappingValue");			
+	}
+	
+	return opAuditor;
+}
+
+//¨ú±o
+function getGroupManager(loginID) {
+	var strSQL = "select distinct z.MEMID manager from syn_ar_role_type x,Syn_AR_GP_Manager y,Mem_GenInf z where x.GP_FUNC=y.GP_FUNC and y.GP_Manager=z.ID and x.Role_Type_Manager='" + loginID + "'";
+	var objRS = getContext().SQLloadValue(strSQL);
+	var manager = "";
+	
+	if (objRS.size() > 0) {
+	    manager = objRS.elementAt(0).get("manager");
+	}
+	
+	return manager;
+}
+
+function getOPMemAllData(strPara){
+	var strSQL = "SELECT   FORMTYPE, " + 
+                 "           RTRIM (XMLAGG (XMLELEMENT (\"ASSIGNER\", ASSIGNER || ',')).EXTRACT ('//text()'),',') OPMemLists " +
+                 "FROM     SYN_AR_ASSIGNER " +
+                 "GROUP BY FORMTYPE " +
+                 "HAVING   FORMTYPE = '" + strPara + "'";
+    
+	return getContext().SQLloadValue(strSQL);
+}
+
+function getJIRAData(IDs) {
+    var strSQL = "select assigner,jira_no from Syn_AR_Assigner where formtype='ROLETYPE' and assigner in (" + IDs + ")";
+	
+	return getContext().SQLloadValue(strSQL);
+}
+
+
+function getORG(ID) {
+    var strSQL = "select ORG_TREE_TYPE from Syn_EMPLOYEE_INFO where EMP_NO = '" + ID + "'";
+	var objRS = getContext().SQLloadValue(strSQL);
+	var org = "";
+	
+	if (objRS.size() > 0) {
+	    org = objRS.elementAt(0).get("ORG_TREE_TYPE");
+	}
+	
+	return org;
+}

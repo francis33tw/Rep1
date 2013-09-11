@@ -1,0 +1,128 @@
+loadLibrary("com.KEYWIN.Common.XML");
+loadLibrary("com.KEYWIN.Common.SystemConfig");
+loadLibrary("com.KEYWIN.ComputerOperation.SQLLib");
+loadLibrary("com.KEYWIN.ComputerOperation.SystemData.SQLLib");
+
+function exportHrXML(successFlowTo, failFlowTo) {
+	Server.addExeLog("exportHrXML Start !!!");
+	var artIns = MyTask.getArtInstance();
+	var applierID = artIns.getAppValue("txtApplierNo");
+	var applierMID = artIns.getAppValue("hdnApplierMID");
+	var applierName = artIns.getAppValue("hdnApplierName");
+	var applierDate = artIns.getAppValue("labApplyDate");
+	var applierDept = artIns.getAppValue("labApplierDeptName");
+	var opAuditor = artIns.getAppValue("hdnOPAuditor");
+	var bu = artIns.getAppValue("cboBU");
+	var tarContent1 = artIns.getAppValue("tarContent1");
+	var tarContent2 = artIns.getAppValue("tarContent2");
+	var calFinishDate = artIns.getAppValue("calFinishDate");
+	var txtModuleNames = artIns.getAppValue("txtModuleNames");
+	var moduleValues = artIns.getAppValue("hdnModuleValues");
+	var labFormNum = artIns.getAppValue("labFormNum");
+	var reporter_idap_id = getLDAPIDByMemID(applierMID);
+	var manager_idap_id = getLDAPIDByMemID("MEMC_" + opAuditor);
+	var senderID = "OA_BPM_" + bu;
+    var opType = "";
+	
+	if (artIns.getAppValue("chkUpdate").equals("true")) opType = "修改";
+	if (artIns.getAppValue("chkReport").equals("true")) opType += (opType.equals("") ? "" : ";") + "報告";
+	if (artIns.getAppValue("chkDelete").equals("true")) opType += (opType.equals("") ? "" : ";") + "刪除";
+	if (artIns.getAppValue("chkAdd").equals("true")) opType += (opType.equals("") ? "" : ";") + "新增";
+	
+	//Time
+	var localTime = getCurrTime(false);
+	var gmtTime = getCurrTime(true);
+	
+	var expXml = new java.lang.StringBuffer("<?xml version='1.0' encoding='UTF-8'?>");
+	expXml.append("<toJiraResponseRequest>");
+	expXml.append("<messageHeader>");
+	expXml.append("<senderID>").append(senderID).append("</senderID>");
+	expXml.append("<receiverID>OA_JIRA</receiverID>");
+	expXml.append("<senderRegion />");
+	expXml.append("<messageVersion>1.1</messageVersion>");
+	expXml.append("<messageID>ULJPRSTIWFZX</messageID>");
+	expXml.append("<sessionID>ULJPRSTIWFZX</sessionID>");
+	expXml.append("<sessionKeepAlive>1</sessionKeepAlive>");
+	expXml.append("<gmtTimeStamp>").append(gmtTime).append("</gmtTimeStamp>");
+	expXml.append("<localTimeStamp>").append(localTime).append("</localTimeStamp>");
+	expXml.append("<systemCredentials>");
+	expXml.append("<senderName />");
+	expXml.append("<senderAuthenticator />");
+	expXml.append("</systemCredentials>");
+	expXml.append("<messageTypeList>");
+	expXml.append("<messageType>");
+	expXml.append("<messageTypeName />");
+	expXml.append("<messageTypeValue />");
+	expXml.append("</messageType>");
+	expXml.append("</messageTypeList>");
+	expXml.append("</messageHeader>");
+	
+	expXml.append("<messageContent>");
+	expXml.append("<toJiraReqDataList>");
+	
+	var arrayModules = moduleValues.split(";");
+	var strModules = "";
+	for (var i=0; i<arrayModules.length; i++) {
+	    strModules += (strModules.equals("") ? "" : ",") + "'" + arrayModules[i] + "'";
+	}
+		
+	var objRS = getJIRAData(strModules);
+	for (var i=0; i<objRS.size(); i++) {
+	    expXml.append("<toJiraReqDataVO>");
+		expXml.append("<type>B</type>");
+		expXml.append("<jiraNO>").append(objRS.elementAt(i).get("jira_no")).append("</jiraNO>");
+		expXml.append("<manager>").append(manager_idap_id).append("</manager>");
+		expXml.append("<reporter>").append(reporter_idap_id).append("</reporter>");
+		expXml.append("<arNumbers>").append(labFormNum).append("</arNumbers>");
+		expXml.append("<applicationCategory><![CDATA[系統資料查詢/異動]]></applicationCategory>");
+		expXml.append("<summary>").append(labFormNum).append("</summary>");
+		expXml.append("<applicant>").append(applierID).append("-").append(applierName).append("</applicant>");
+		expXml.append("<applicantUnit>").append(applierDept).append("</applicantUnit>");
+		expXml.append("<applicantDate>").append(applierDate).append("</applicantDate>");
+		expXml.append("<projectName><![CDATA[系統資料查詢/異動]]></projectName>");
+		expXml.append("<module><![CDATA[系統資料查詢/異動]]></module>");
+		expXml.append("<contactMIS />");
+		if (calFinishDate.equals("")) expXml.append("<completeDate />");
+		else expXml.append("<completeDate>").append(calFinishDate).append("</completeDate>");
+		expXml.append("<demandCategory />");
+		expXml.append("<demandItem>").append(opType).append("-").append(tarContent1).append("</demandItem>")
+		expXml.append("<demandContent>").append(opType).append("-").append(txtModuleNames).append("-").append(tarContent1).append("</demandContent>");
+		
+		//附件清單
+		expXml.append("<attachFileList>");
+		var attUploadFile = artIns.getAppValue("attFile");  
+		var filenum = attUploadFile.split("\n\n");  
+		var filePath = "";
+		for (var j=0; j < filenum.length; j++){    
+			var filelist = filenum[j].split("\t\t");    
+			var strFileName = filelist[0];
+			var strFileID = filelist[1];
+			var strInsID = filelist[4];
+			var strFilePath = "http://" + Server.getServerEnv().getServerHost() + ":8080/WebAgenda" + "\\download?fileID=" + strFileID + "&modelName=attFile&itemID=ITEM3&artInsID=" + strInsID;
+			expXml.append("<attachFile>");
+			expXml.append("<attachFileName>").append(strFileName).append("</attachFileName>");
+			expXml.append("<attachFileURL><![CDATA[").append(strFilePath).append("]]></attachFileURL>");
+			expXml.append("</attachFile>");
+		}
+		expXml.append("</attachFileList>");
+		expXml.append("</toJiraReqDataVO>");
+	}
+	
+	expXml.append("</toJiraReqDataList>");
+	expXml.append("</messageContent>");
+	expXml.append("</toJiraResponseRequest>");
+		
+	var xmlStr = expXml.toString();
+	Server.addExeLog("exportHrXML xml : " + xmlStr);
+	
+	insertXmlLog(xmlStr, labFormNum);
+	var rCode = 200;
+	if(getWebMode() == 1) rCode = callXmlWebService(xmlStr);
+	Server.addExeLog("exportHrXML callXmlWebService rCode : " + rCode);
+	Server.addExeLog("exportHrXML End !!!");
+	
+	if(rCode != 200){
+		return failFlowTo; 
+	}
+	return successFlowTo;
+}

@@ -1,0 +1,54 @@
+function setAllProjectRole() {
+    loadLibrary("com.KEYWIN.Common.FormUtil");
+    var context = getContext();      //Server or Client
+	
+    setRoleFunction(context);        //電腦作業_角色內功能權限
+	setFunctionNewEnhance(context);  //電腦作業_功能新增強化&電腦作業_專案需求變更
+}
+
+//電腦作業_角色內功能權限
+function setRoleFunction(context) {
+    var strSQL = "select MEMID from mem_geninf where ID in(select role_type_manager from syn_ar_role_type)";
+    var objRS = context.SQLloadValue(strSQL);
+    var vecMember = new java.util.Vector();
+	
+    if (objRS.size() > 0) {
+	var prjRole = context.getProjectRole("ROL00001375865469301");
+        
+	for (var i=0; i<objRS.size(); i++) {
+	    vecMember.addElement(objRS.elementAt(i).get("MEMID"));
+	}
+	prjRole.setMemberList(vecMember);
+        context.updateRole(prjRole);		
+    }
+}
+
+//電腦作業_功能新增強化&電腦作業_專案需求變更
+function setFunctionNewEnhance(context) {
+	var strSQL = "";
+	strSQL += "select distinct M.MEMID From Mem_GenInf M Left join Rol_Mem R on M.MemID = R.MemID Left join Rol_GenInf RG on R.RolID = RG.RolID  ";
+	strSQL += "Left join Dep_GenInf D on RG.DepID = D.DepID Left join Syn_HR_MGR_AGENT hr_mgr ON M.ID = hr_mgr.EMPL_ID  ";
+	strSQL += "where  ";
+	strSQL += "EXISTS (select m.id from Mem_GenInf m join Rol_Mem r on m.MemID = r.MemID join Rol_GenInf n on r.RolID = n.RolID join Dep_GenInf o on n.DepID = o.DepID) ";
+	strSQL += "and M.Resign !='true' and M.Invisible != 'true' and M.DeniedLogin !='true'  ";
+	strSQL += "and (M.MemID in(select BU_DEPT_MEM from SYN_AR_BU_DEPT_MEM where TYPE='2') ";
+	strSQL += "OR D.DepID in(select BU_DEPT_MEM from SYN_AR_BU_DEPT_MEM where TYPE='1')) ";
+
+    var objRS = context.SQLloadValue(strSQL);
+    var vecMember = new java.util.Vector();
+	
+    if (objRS.size() > 0) {
+		//電腦作業_功能新增強化
+	    var prjRole = context.getProjectRole("ROL00001376271714876");
+        for (var i=0; i<objRS.size(); i++) {
+	        vecMember.addElement(objRS.elementAt(i).get("MEMID"));
+	    }
+	    prjRole.setMemberList(vecMember);
+        context.updateRole(prjRole);
+		
+		//電腦作業_專案需求變更
+		prjRole = context.getProjectRole("ROL00011376554289695");
+		prjRole.setMemberList(vecMember);
+        context.updateRole(prjRole);	
+    }
+}

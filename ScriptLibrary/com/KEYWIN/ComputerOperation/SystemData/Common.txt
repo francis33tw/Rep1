@@ -1,0 +1,36 @@
+function appendSubtaskProcessTable() {
+	loadLibrary("com.KEYWIN.Common.SystemConfig");
+	var artIns = MyTask.getArtInstance();
+	var formMap = artIns.getAppDataMap();
+	var table = formMap.get("subAuditTable");
+	var mNumber = Server.getMemberByID(MyTask.getMemberID()).getMyID();
+	var mName = Server.getMemberByID(MyTask.getMemberID()).getName();
+	var cal = new java.util.Calendar.getInstance();
+	var format = new Packages.java.text.SimpleDateFormat();
+	format.applyPattern("yyyy/MM/dd HH:mm:ss");
+	var date = format.format(cal.getTime()).toString();
+	var auditCombo = artIns.getAppValue("auditCombo");
+	var opinion = artIns.getAppValue("opinion");
+
+	var taskName = MyTask.getName();
+	var rowMap = new java.util.HashMap();
+	rowMap.put("ITEM7",mNumber+"-"+mName);
+	rowMap.put("ITEM5",date);
+	rowMap.put("ITEM4",opinion);
+	rowMap.put("ITEM3",taskName);
+	// 增加終止、撤銷至簽核歷程_Y130128
+	if ("1".equals(artIns.getAppValue("back"))) {
+		rowMap.put("ITEM2","退回重辦");
+	} else if ("1".equals(artIns.getAppValue("shutdown"))) {
+		rowMap.put("ITEM2","已終止");
+	} else if ("2".equals(artIns.getAppValue("shutdown"))) {
+		rowMap.put("ITEM2","已撤銷");
+	} else {
+		rowMap.put("ITEM2","已處理");
+	}
+	rowMap.put("ITEM1",(table.size()+1)+"");	
+	table.add(rowMap);
+	artIns.setAppValue("subAuditTable",table);	
+	artIns.setAppValue("opinion","");
+	Server.updateArtInstance(artIns);
+}

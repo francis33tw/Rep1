@@ -1,0 +1,137 @@
+function getOfficePhoneByID(strID){
+	loadLibrary("com.KEYWIN.Common.FormUtil");
+	var sql = "select OfficePhone from mem_geninf where ID= '"+strID+"'";
+	var dt = getContext().SQLloadValue(sql);
+	if(dt.size()>0)
+		return dt.get(0).get("OfficePhone");
+	else
+		return "";
+}
+
+function getLDAPIDByMemID(strMemID){
+	loadLibrary("com.KEYWIN.Common.FormUtil");
+	var sql = " select b.ldap_id from mem_geninf a join syn_employee_info b on a.id=b.emp_no where a.memid='"+strMemID+"'";
+	var dt = getContext().SQLloadValue(sql);
+	if(dt.size()>0)
+		return dt.get(0).get("ldap_id");
+	else
+		return "";
+}
+
+//依工號取得申請人資訊
+function getApplierInfo(strID){
+	loadLibrary("com.KEYWIN.Common.FormUtil");
+	var sql = "select DISTINCT M.ID ID, M.UserName UserName, D.Name DepName, M.MemID MemID, D.DepID DepID, M.OfficePhone From Mem_GenInf M Left join Rol_Mem R " +
+				"on M.MemID = R.MemID Left join Rol_GenInf RG on R.RolID = RG.RolID Left join Dep_GenInf D on " +
+				"RG.DepID = D.DepID Left join Syn_employee_info E on M.ID = E.emp_no Left join SYN_HR_MGR_AGENT hr_mgr " +
+				"ON M.ID = hr_mgr.EMPL_ID where M.id  = '" + strID+ "' and ( hr_mgr.EMPL_ID = '" + strID+ "' or " +
+				"hr_mgr.AGENT_ID = '" + strID+ "' ) and M.Resign !='true' and M.Invisible != 'true' and M.DeniedLogin !='true' and D.ID = '1' ";
+	//加上BU功能規劃人員過濾條件
+	sql += " and (M.MemID in(select BU_DEPT_MEM from SYN_AR_BU_DEPT_MEM where TYPE='2') ";
+	sql += " OR D.DepID in(select BU_DEPT_MEM from SYN_AR_BU_DEPT_MEM where TYPE='1'  )) ";
+	return getContext().SQLloadValue(sql);
+}
+
+function getARModuleData(hdnModuleValues){
+	loadLibrary("com.KEYWIN.Common.FormUtil");
+	loadLibrary("com.KEYWIN.Common.SystemConfig");
+	//hdnModuleValues: DEV;FM
+	if(hdnModuleValues.equals("")){
+		//logInfo("hdnModuleValues為''", 1);
+		return null;
+	}else{
+	    var aryList = hdnModuleValues.split(';');
+		var strCondition = "";
+		for(var i=0; i<aryList.length; i++)
+			strCondition += "'"+aryList[i]+"',";
+		if(strCondition!="")
+			strCondition=strCondition.substring(0, strCondition.length-1);
+		var sql = "select a.*, b.UserName, b.MemID from SYN_AR_MODULE a join Mem_GenInf b on a.assigner = b.id ";
+		sql += " WHERE a.BU_CODE='TW' and a.MODULE_CODE IN("+strCondition+")";;
+	    //logInfo(sql, 1);
+		return getContext().SQLloadValue(sql);
+	}
+}
+
+//取得BU功能主管、集團功能主管
+function getARMRG(strApplierMID){
+	loadLibrary("com.KEYWIN.Common.FormUtil");
+	var sql = "";
+	sql +=" select m1.MemID BUMGRMID, m2.MemID GPMGRMID from SYN_AR_BU_DEPT_MEM x  ";
+	sql +=" inner join SYN_AR_BU_MANAGER y on x.BU_FUNC = y.BU_FUNC and y.bu_code = 'TW'  ";
+	sql +=" inner join SYN_AR_GP_MANAGER z on z.GP_FUNC = y.GP_FUNC  ";
+	sql +=" join Mem_GenInf m1 on m1.ID=y.BU_MANAGER ";
+	sql +=" join Mem_GenInf m2 on m2.ID=z.GP_MANAGER ";
+	sql +=" where x.bu_code = 'TW'  ";
+	sql +=" and ( x.BU_DEPT_MEM in (select distinct d.depid From Mem_GenInf M join Rol_Mem R on M.MemID = R.MemID  ";
+	sql +=" join Rol_GenInf RG on R.RolID = RG.RolID join Dep_GenInf D on RG.DepID = D.DepID and d.ID='1' ";
+	sql +=" where m.MemID='"+strApplierMID+"')  ";
+	sql +=" or x.BU_DEPT_MEM  = '"+strApplierMID+"') ";
+	return getContext().SQLloadValue(sql);
+}
+
+function getData_SYN_AR_BU_MANAGER(strCondition){
+	loadLibrary("com.KEYWIN.Common.FormUtil");
+	loadLibrary("com.KEYWIN.Common.SystemConfig");
+	var sql = "select * from SYN_AR_BU_MANAGER";
+	sql +=" where 1=1 "+strCondition;
+	//logInfo(sql, 1);
+	return getContext().SQLloadValue(sql);
+}
+
+function getBUFUNC(hdnApplierMID, hdnApplierDeptID){
+	loadLibrary("com.KEYWIN.Common.FormUtil");
+	loadLibrary("com.KEYWIN.Common.SystemConfig");
+	var sql = "select BU_FUNC from SYN_AR_BU_DEPT_MEM where BU_CODE='TW' ";
+	sql +=" and (BU_DEPT_MEM ='"+hdnApplierMID+"' OR BU_DEPT_MEM ='"+hdnApplierDeptID+"')"; 
+	//logInfo(sql, 1);
+	var ds = getContext().SQLloadValue(sql);	
+	if(ds.size()>0)
+		return ds.get(0).get("BU_FUNC");
+	else
+		return "";
+}
+
+function getAuditData(hdnModuleValues){
+	loadLibrary("com.KEYWIN.Common.FormUtil");
+	//hdnModuleValues: DEV;FM
+	if(hdnModuleValues.equals("")){
+		return null;
+	}else{
+	    var aryList = hdnModuleValues.split(';');
+		var strCondition = "";
+		for(var i=0; i<aryList.length; i++)
+			strCondition += "'"+aryList[i]+"',";
+		if(strCondition!="")
+			strCondition=strCondition.substring(0, strCondition.length-1);
+		var sql = "select distinct SECTION_CHIEF, MINISTER from SYN_AR_MODULE ";
+		sql += " WHERE MODULE_CODE IN("+strCondition+")";;
+	    return getContext().SQLloadValue(sql);
+	}
+}
+
+//strType: "1"->功能新增強化；"2"->專案需求變更
+function getRootTaskManagerData(strRootInsID, strDivMGRID, strType){
+	loadLibrary("com.KEYWIN.Common.FormUtil");
+	var sql = "select ITEM1 SN, ITEM5 DepMGRMID  from ";
+	if("1".equals(strType))
+	   sql += " ART00541369806554087ITEM107  ";
+	else if("2".equals(strType))
+	   sql += " ART00001376554289700ITEM107  ";
+	
+	sql +=" where ROWNUM=1 AND InsID='"+strRootInsID+"' and ITEM2='"+strDivMGRID+"'"; 
+	//logInfo("TestByMos getRootTaskManagerData sql: "+sql, 1);
+		
+	return getContext().SQLloadValue(sql);	
+}
+
+function getAdmMID(){
+	loadLibrary("com.KEYWIN.Common.FormUtil");
+	var sql = "select mappingValue, ITEM1 from SYN_BPM_PARAMETERS where code= 'Admin' ";
+	var ds = getContext().SQLloadValue(sql);	
+	if(ds.size()>0)
+		return ds.get(0).get("mappingValue");
+	else
+		return "";
+}
+

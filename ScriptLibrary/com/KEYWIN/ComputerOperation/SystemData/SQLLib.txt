@@ -1,0 +1,38 @@
+loadLibrary("com.KEYWIN.Common.FormUtil");
+
+function getBUManagers(modules) {
+    var strSQL = "select distinct y.BU_MANAGER BU_MANAGER from Syn_AR_Module x,Syn_AR_BU_Manager y where x.BU_FUNC=y.BU_FUNC and x.BU_CODE='TW' and y.BU_CODE='TW' and x.MODULE_CODE in (" + modules + ")";
+	
+	return getContext().SQLloadValue(strSQL);
+}
+
+function getOPAuditor(modules){
+	var strSQL = "select x.ASSIGNER ASSIGNER from Syn_AR_MODULE x where x.BU_CODE='TW' and x.MODULE_CODE in (" + modules + ") and rownum=1";
+
+	var objRS = getContext().SQLloadValue(strSQL);
+	var opAuditor = "";
+	
+	if(objRS.size()>0){
+		opAuditor = objRS.elementAt(0).get("ASSIGNER");			
+	}
+	
+	return opAuditor;
+}
+
+function getJIRAData(modules) {
+    var strSQL = "select distinct data_jira_no jira_no from syn_ar_module where module_code in (" + modules + ")";
+	
+	return getContext().SQLloadValue(strSQL);
+}
+
+function getORG(ID) {
+    var strSQL = "select ORG_TREE_TYPE from Syn_EMPLOYEE_INFO where EMP_NO = '" + ID + "'";
+	var objRS = getContext().SQLloadValue(strSQL);
+	var org = "";
+	
+	if (objRS.size() > 0) {
+	    org = objRS.elementAt(0).get("ORG_TREE_TYPE");
+	}
+	
+	return org;
+}

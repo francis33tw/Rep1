@@ -1,0 +1,456 @@
+function getContext() {
+  if (typeof (Server) != "undefined")
+    return Server;
+  if (typeof (Client) != "undefined")
+    return Client;
+  return null;
+}
+
+function convertToHashMap(strContent){
+	var objHM = new java.util.HashMap();
+	var itemtok = new java.util.StringTokenizer(strContent, "||");
+	while(itemtok.hasMoreTokens()){
+		var item = itemtok.nextToken();
+		var itemary = item.split("=");
+		if(itemary.length>1)
+			objHM.put(itemary[0], itemary[1].substring(0, itemary[1].length()-1));
+	}
+	return objHM;
+}
+
+function departmentTrace(objContext, uid){//uid為rolID職務
+	var vec = new java.util.Vector();
+	var ret, role, par, dep;
+
+	if(uid.substring(0,3).equals("ROL")){
+		role = objContext.getRole(uid);
+		par = role.getParentID();
+		vec = departmentTrace(objContext, par);
+		return vec;
+	}else if(uid.substring(0,3).equals("DEP")){
+		dep = objContext.getDepartment(uid);
+		vec = departmentTrace(objContext, dep.getParentID());
+		vec.add(dep);
+	}
+	return vec;
+}
+
+function getChairmanMemID(){
+	var objContext = getContext();
+	var objRole = objContext.getRole(getChairmanRoleID());
+	if(objRole!=null){
+		var objMgrList = objRole.getMemberList();
+		if(objMgrList.size()>0){
+			return objMgrList.get(0);
+		}else
+			return "";
+	}else
+		return "";
+}
+function getChairmanRoleID(){
+	return "ROLC_-1272434940_M";
+}
+
+function getMemberData(objContext, strMemID, RolID){
+	loadLibrary("co.Keywin.Common.SystemConfig");
+	var retValues = new Object();
+	retValues.MemID = strMemID;
+	retValues.JobTitle = "";
+	retValues.LoginID = "";
+	retValues.UserName = "";
+	retValues.RolID = "";
+	retValues.RoleName = "";
+	retValues.DepID = "";
+	retValues.DepCode = "";
+	retValues.DepName = "";
+	retValues.Email = "";
+	retValues.OfficePhone = "";
+	retValues.OfficePhoneExt = "";
+	retValues.Address = "";
+	retValues.BusinessType = "";
+	retValues.BusinessTypeName = "";
+	retValues.SignLevel = "";
+	retValues.AllDepList = null;
+	retValues.ParentDepID = "";
+	retValues.ParentDepCode = "";
+	retValues.ParentDepName = "";
+	retValues.DivID = "";
+	retValues.DivCode = "";
+	retValues.DivName = "";
+
+	try{
+		var objMemberRecord = objContext.getMember(strMemID);
+		if(RolID==null)RolID = objMemberRecord.getMainRoleID();
+		if(RolID==getChairmanRoleID()){
+			var vRol = objMemberRecord.getRoleList();
+			for(var i = 0 ; i < vRol.size(); i++ ){
+				RolID = vRol.get(i).getRoleID();
+				if(RolID==getChairmanRoleID())continue;
+				break;
+			}
+		}
+
+		var objMemberDR = objMemberRecord.getMemberDR(RolID);
+		var objAllManager = departmentTrace(objContext, RolID);
+
+		retValues.MemID = strMemID;
+		retValues.JobTitle = objMemberRecord.getJobTitle();
+		retValues.LoginID = objMemberRecord.getLoginID();
+		retValues.UserName = objMemberRecord.getName();
+		retValues.RolID = RolID;
+		retValues.RoleName = objMemberDR.getRoleName();
+		retValues.DepID = objMemberDR.getDepartmentID();
+		
+		var objDep = objContext.getDepartment(objMemberDR.getDepartmentID());
+		var objDepHM = convertToHashMap(objDep.getSynopsis());
+		var objResopnsibility = convertToHashMap(objDep.getResopnsibility());
+
+		retValues.DepCode = objDep.getMyID();
+		retValues.DepName = objMemberDR.getDepartmentName();
+		retValues.Email = objMemberRecord.getEmail();
+		if(objMemberRecord.getOfficePhone().equals(""))
+			retValues.OfficePhone = objDepHM.get("TEL_NO")
+		else
+			retValues.OfficePhone = objDepHM.get("TEL_NO")+"#"+objMemberRecord.getOfficePhone();
+		
+//		retValues.OfficePhoneExt = objMemberRecord.getOfficePhone();
+//		retValues.Address = objDepHM.get("ZAP")+" "+objDepHM.get("ADDRESS");
+//		retValues.BusinessType = objDepHM.get("BUSINESS_TYPE");
+//		retValues.BusinessTypeName = getBusinessTypeName(objDepHM.get("BUSINESS_TYPE"));
+		retValues.SignLevel = parseInt(objResopnsibility.get("SIGN_LEVEL"));
+		retValues.AllDepList = objAllManager;
+		
+
+		var parentIdx = (objAllManager.size()>2)?objAllManager.size()-2:0;
+		retValues.ParentDepID = objAllManager.get(parentIdx).getID();
+		retValues.ParentDepCode = objAllManager.get(parentIdx).getMyID();
+		retValues.ParentDepName = objAllManager.get(parentIdx).getName();
+
+		//20130327 mark Mos
+		//logInfo("ParentDepName="+objAllManager.get(parentIdx).getName()+" retValues.ParentDepCode"+objAllManager.get(parentIdx).getMyID(),2);
+		
+		var tplv = objResopnsibility.get("SIGN_LEVEL");
+		if(tplv>=7){
+			retValues.DivID = objMemberDR.getDepartmentID();
+			retValues.DivCode = objDep.getMyID();
+			retValues.DivName = objMemberDR.getDepartmentName();
+		}else if(objAllManager.size()>2){
+			for( var i = objAllManager.size() - 2 ; i >=0 ; i-- ){
+				var objResopnsibility = convertToHashMap(objAllManager.get(i).getResopnsibility());
+				var SignLevel = objResopnsibility.get("SIGN_LEVEL");
+				if(tplv<=SignLevel)
+					tplv = SignLevel;
+				if(tplv==7){
+					retValues.DivID = objAllManager.get(i).getID();
+					retValues.DivCode = objAllManager.get(i).getMyID();
+					retValues.DivName = objAllManager.get(i).getName();
+					break;
+				}
+			}
+		}else{
+			retValues.DivID = "";
+			retValues.DivCode = "";
+			retValues.DivName = "";
+		}
+	}catch(e){
+    //20130402 add Mos
+    if(!"".equals(strMemID))
+		    logInfo("Get Member Data Error:\nstrMemID:"+strMemID+" RolID:"+RolID,2);
+	}
+	return retValues;
+}
+
+function getComboBoxValue(strValue, iSelectedIdx){
+	var objValue = new java.util.StringTokenizer(strValue, "@");
+	var strSelectedValue = "";
+	var i = 1;
+	while(objValue.hasMoreTokens()){
+		var xx = objValue.nextToken();
+		if(i==iSelectedIdx){
+			strSelectedValue = xx;
+			break;
+		}
+		i++;
+	}
+	return strSelectedValue;
+}
+
+function getComboBoxKeyValue(objVec, keyName, valName){
+	var strKeys = "";
+	var strValues = "";
+	for(var i=0;i<objVec.size();i++){
+		var objHM = objVec.get(i);
+		strKeys += "@"+objHM.get(keyName);
+		strValues += "@"+objHM.get(valName);
+	}
+	var ret = new Object();
+	ret.Key = strKeys;
+	ret.Value = strValues;
+	return ret;
+}
+
+function getFormItem(objContext, artid) {
+	loadLibrary("co.Keywin.Common.SystemConfig");
+	var sql = "SELECT ItemID, [Name]";
+	sql += " FROM "+artid+"_Form";
+	logInfo(sql,1);
+	var rs = objContext.SQLloadValue(sql);
+	var hm = new java.util.HashMap();
+	for(var i=0;i<rs.size();i++){
+		hm.put(rs.get(i).get("Name").toString(), rs.get(i).get("ItemID").toString());
+	}
+	return hm;
+}
+
+function dumpVector(objVector){
+	loadLibrary("co.Keywin.Common.SystemConfig");
+	logInfo("Dumping Vector....",1);
+	var idx = 0;
+	for(var i=0; i<objVector.size();i++){
+		logInfo("idx:"+(idx++),1);
+		var strClassName = objVector.elementAt(i).getClass().getName();
+		if(strClassName.equals("java.util.HashMap"))dumpHashMap(objVector.elementAt(i));
+	}
+}
+
+function dumpHashMap(objHashMap){
+	loadLibrary("co.Keywin.Common.SystemConfig");
+	logInfo("Dumping HashMap....",1);
+	var idx=0;
+	var iterator = objHashMap.keySet().iterator();
+	while(iterator.hasNext()){
+		var key = iterator.next().toString();
+		var value = objHashMap.get(key).toString();
+		logInfo(key + " " + value,1);
+	}
+}
+
+function getCurrentDateAndTime(){
+	/**
+*   ###取得目前的日期與時間###
+*   @return today   String  目前的日期與時間，格式為 yyyy/MM/dd hh:mm:ss
+*/
+	var mydate = new Packages.pase.agenda.MyDate();	
+	return mydate.getCurrentDate( "Y/M/D H:m:S" );
+}
+
+function getCurrentDate(){
+	/**
+*   ###取得目前的日期###
+*   @return today   String  目前的日期與時間，格式為 yyyy/MM/dd
+*/
+	var mydate = new Packages.pase.agenda.MyDate();	
+	return mydate.getCurrentDate( "Y/M/D" );
+}
+	
+function getTableColumn(objContext, artid, tableid) {
+	var sql = "select itemid, property from " + artid + "_form where itemid='" + tableid + "' or name='" + tableid + "'";
+	var rs = objContext.SQLloadValue(sql);
+	var property = rs.get(0).get("property");
+	var sidx = property.indexOf("[column=");
+	var eidx = property.indexOf("]",sidx+1);
+	var columnString = property.substring(sidx+8, eidx);
+	var a = Packages.util.Base64.decode(columnString);
+	var column = a.split(";");
+	var hm = new java.util.HashMap();
+	
+	hm.put("ItemID",rs.get(0).get("itemid"));
+	for(var i=0; i<column.length; i++){
+		var ary = column[i].split(",");
+		var item = ary[0];
+		var name = ary[1];
+		hm.put(name.toString(),item.toString());
+	}
+	return hm;
+}
+
+function getMailIDByTemplateName(strTemplateName) {
+	var strSQL = "SELECT ID FROM Email_Template WHERE Name = '"+strTemplateName+"'";
+	var objRS = getContext().SQLloadValue(strSQL);
+	var strEmailID = "";
+	if(objRS)
+		if(objRS.size()>0)
+			strEmailID = objRS.get(0).get("ID");
+	return strEmailID;
+}
+
+//複製檔案
+function copyFile(srFile, dtFile) {
+    importPackage(Packages.java.io);
+	loadLibrary("co.Keywin.Common.SystemConfig");
+	var errormsg = "";
+	
+	try {
+		var tFile = new File(srFile);
+		if( ! tFile.exists()) //不存在該檔案路徑，代表要加上.tmp
+			srFile += ".tmp";
+        var srcChannel = new FileInputStream(srFile).getChannel();
+        var dstChannel = new FileOutputStream(dtFile).getChannel();
+        dstChannel.transferFrom(srcChannel, 0, srcChannel.size());
+        srcChannel.close();
+        dstChannel.close();
+    } 
+	catch (e) { 
+	    errormsg = e.getMessage();
+	    logInfo("複製檔案失敗：" + errormsg,1);
+    }
+	
+	var ret = new Object();
+	ret.result = (!errormsg.equals("") ? false : true);
+	ret.errormsg = errormsg;
+	
+	return ret;
+}
+
+//由小到大排序table元件  
+function sortTableByColumn(tableName, colName){
+    loadLibrary("co.Keywin.Common.SystemConfig");
+    function __cmpFunc(a, b){          
+		if ( a > b ){
+			//logInfo(a+" > "+b, 1);
+			return 1;
+		}
+		if ( a < b ) return -1;         
+		return 0;       
+	}           
+	var localCmp = __cmpFunc;           
+    var tbl = Form.getComponent( tableName );    
+	var vec = tbl.getRowList();    
+	var vecAfter = java.util.Vector();    
+	var count = vec.size();    
+	var rankTable = new Array( count );        
+	for (var i = 0; i < count; i++){      
+		var keyA = vec.get(i).get(colName)*1;      
+		var rank = 0;      
+		for (var j = 0; j < vec.size(); j++){
+	        var keyB = vec.get(j).get(colName)*1;         
+		    var cmpResult = localCmp( keyA, keyB );         
+			if ( cmpResult > 0 ) rank++;         
+			else if ( cmpResult == 0 && i < j ) rank++;               
+		}      
+		rankTable[ rank ] = i;    
+	}        
+	for ( var k = 0; k < count; k++ ){      
+		vecAfter.add( vec.get( rankTable[ k ] ) );
+	}    
+	tbl.setRowList( vecAfter );  
+}
+
+//從Globals取得物件
+function getValueFormGlobals(strKey){
+	var strID = "";
+	if (typeof (Server) != "undefined") //Server端
+        strID = MyTask.getRootID();
+	else  //Client端
+		strID = Form.getCurrentTask().getRootID();
+	
+	var hmGlobals = getContext().getGlobals(strID);
+	if(hmGlobals == null){
+		return null;
+	}else{
+		return hmGlobals.get(strKey);
+	}
+}
+
+//將值設定至Globals
+function setValueToGlobals(strKey, objValue){
+	var strID = "";
+	if (typeof (Server) != "undefined") //Server端
+        strID = MyTask.getRootID();
+	else  //Client端
+		strID = Form.getCurrentTask().getRootID();
+	
+	var hmGlobals = getContext().getGlobals(strID);
+	if(hmGlobals == null){
+		hmGlobals = new java.util.HashMap();
+	}
+	hmGlobals.put(strKey, objValue);
+	getContext().setGlobals(strID, hmGlobals);
+}
+
+//透過ID從Globals取得物件
+function getValueFormGlobalsByID(strID, strKey){
+	loadLibrary("co.Keywin.Common.SystemConfig");
+	var hmGlobals = getContext().getGlobals(strID);
+	if(hmGlobals == null){
+		logInfo("TestByMos getValueFormGlobalsByID("+strID+","+strKey+")--->null", 1);
+		return null;
+	}else{
+		return hmGlobals.get(strKey);
+	}
+}
+
+//透過ID將值設定至Globals
+function setValueToGlobalsByID(strID, strKey, objValue){
+	var hmGlobals = getContext().getGlobals(strID);
+	if(hmGlobals == null){
+		hmGlobals = new java.util.HashMap();
+	}
+	hmGlobals.put(strKey, objValue);
+	getContext().setGlobals(strID, hmGlobals);
+}
+
+
+//設定table的全部欄位是否可編輯
+function setTableEnabled(tableID, isEdit){
+  var table = Form.getComponent(tableID);
+	var iCount = table.getColumnNodeVector().size();
+	for(var i=0; i<iCount; i++)
+		table.getColumnNodeVector().get(i).setEditable(isEdit); 
+}
+
+//判斷值是否存在於table key值欄位中
+//strKey: 要比對的值 
+//hashTableInfo: key:table名；value:key欄位名
+function isValueExistTable(strKey, hashTableInfo){
+	loadLibrary("co.Keywin.Common.SystemConfig");
+	var result = false;
+	var iter = hashTableInfo.keySet().iterator();
+	while(iter.hasNext()){
+		var tabName = iter.next().toString();
+		//logInfo("tabName: "+tabName, 1);
+		var keyFieldName = hashTableInfo.get(tabName).toString();
+		//logInfo("keyFieldName: "+keyFieldName, 1);
+		var tab = Form.getComponent(tabName);
+		for(var i=0; i<tab.getRowCount(); i++){
+			if(strKey.equals(tab.getValueAt(i, keyFieldName)))
+				return true;
+		}
+	}
+	return result;
+}
+
+//寄TemplateMail時也附加表單上的特定夾檔元件附件
+//etID: TemplateMail ID
+//toEmailAll: 收件者
+//strFileID: 夾檔元件ID
+function sendEmailWithFormAttachFile(etID, toEmailAll, strFileID){
+	var fromEmail = Server.getMember("administrator").getEmail();    //設定寄件者
+	var fileList = new java.util.Vector();
+	var cc = "";
+	try{
+		if (!toEmailAll.equals("")) {
+			var fileVector = new java.util.Vector();
+		
+			var file=objInst.getAppValue(strFileID);  
+			var filenum=file.split("\n\n");  
+			var filePath = "";
+			for (var num=0; num < filenum.length; num++){    
+				var filelist=filenum[num].split("\t\t");    
+				var last=filelist[0].lastIndexOf(".");    
+				var filetype=filelist[0].substring(last+1);    
+				if(filetype.equals("tmp")){      
+					filelist[0]=filelist[0].substring(0,last);    
+				}
+				filePath = Server.getServerEnv().getUploadPath()+"\\"+filelist[3]+"\\"+filelist[4]+filelist[8]+"\\"+filelist[0];    
+				fileVector.add(filePath);  
+			}                       
+			Server.sendTemplateMail(fromEmail,toEmailAll,cc,etID,fileVector,MyTask.getID(),true);
+		}
+		
+	}catch(e){
+		if (!toEmailAll.equals(""))
+			Server.sendTemplateMail(fromEmail,toEmailAll,cc,etID,null,MyTask.getID(),true);
+		logInfo("sendEmailWithFormAttachFile error: "+e, 2);
+	}
+}

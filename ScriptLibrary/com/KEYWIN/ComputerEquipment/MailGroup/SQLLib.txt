@@ -1,0 +1,8 @@
+loadLibrary("com.KEYWIN.Common.FormUtil");
+
+//取得是否為人事部門
+function getHRDepartment(deptID) {
+	var strSQL = "select a.DepID from Syn_Dep_Inf a,SYN_BPM_PARAMETERS b where a.ORG_ID=b.MappingValue and b.Code='CEHRDeptCode' and a.DepID='" + deptID + "'";
+	
+	return getContext().SQLloadValue(strSQL);
+}

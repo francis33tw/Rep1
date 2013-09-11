@@ -1,0 +1,59 @@
+loadLibrary("com.KEYWIN.Common.SystemConfig");
+loadLibrary("com.KEYWIN.Common.SQLLib");
+function getLocation(loginID) {
+	var strSQL = "select LOCATION from Syn_EMPLOYEE_INFO where EMP_NO='" + loginID + "'";
+	var result = Client.SQLloadValue(strSQL);
+	
+	if(result.size() > 0) {
+		return result.get(0).get("LOCATION");
+	}	
+	return "";
+}
+
+function getAdminSigner() {
+	var strSQL = "select MappingValue from Syn_BPM_Parameters where Code='Admin'";	
+	return Client.SQLloadValue(strSQL);
+}
+
+function getCancelLeaveDeadLineDueDay(hdnBU){
+    var strSQL = "";
+    strSQL += "SELECT MAPPINGVALUE";
+    strSQL += " FROM SYN_BPM_PARAMETERS";
+    strSQL += " WHERE CODE = 'CancelLeaveDueDays'"; 
+	strSQL += " AND ITEM1 = '"+hdnBU+"'";	
+	return Client.SQLloadValue(strSQL);
+}
+
+
+function getLeaveRecordDetailByFormNO(hdnApplierID,hdnInsID,hdnCancelLeaveDeadLineDate,hdnOpenWinSelectFormNo){
+    var strSQL = "";
+    strSQL += "SELECT INS.ITEM8 SN,INS2.ITEM23 LFormNo ,SUBSTR(INS2.ITEM154,0,4)||SUBSTR(INS2.ITEM154,6,2)||SUBSTR(INS2.ITEM154,9,2) ApproveDate ,SUBSTR(INS2.ITEM195,6,6) ApproverID ,INS.ITEM10 AgentID ,INS.ITEM9 ApplierID ,INS.ITEM7 LeaveReason ,INS.ITEM2 Applier, INS2.ITEM23 FormNo,INS.ITEM1 LType ,INS.ITEM4 LStartTime,INS.ITEM5 LEndTime,INS.ITEM6 LHours,INS.ITEM7 LReason,INS.ITEM12 LID,INS.ITEM13 LSID,ARTSTATE.NAME STATUS";
+    strSQL += " FROM ART00431367490149196ITEM51 INS";
+    strSQL += " JOIN ARTINSTANCE ART ON INS.INSID = ART.INSID"; 
+	strSQL += " JOIN ART_STATE ARTSTATE ON ARTSTATE.ASTID = ART.ASTID";	
+	strSQL += " JOIN ART00431367490149196_INS INS2 ON INS.INSID = INS2.INSID";
+	strSQL += " WHERE INS.INSID<>'"+hdnInsID+"'";
+	strSQL += " AND INS.ITEM9='"+hdnApplierID+"'";
+	strSQL += " AND ARTSTATE.NAME IN('¤wµo¦æ')";
+	strSQL += " AND INS.ITEM5 >='"+hdnCancelLeaveDeadLineDate+"'";
+	strSQL += " AND INS2.ITEM23='"+hdnOpenWinSelectFormNo+"'";
+	strSQL += " ORDER BY INS.ITEM4";	
+	
+	return Client.SQLloadValue(strSQL);
+}
+
+function getApplierCompanyCodeData(hdnApplierID) {
+    var strSQL = "";
+    strSQL += "SELECT COMPANY_CODE";
+    strSQL += " FROM SYN_EMPLOYEE_INFO";
+    strSQL += " WHERE EMP_NO='" + hdnApplierID + "'";
+
+    return Client.SQLloadValue(strSQL);
+}
+
+function getInformListData(strBU,strLocation) {
+	var strSQL = "select MappingValue from Syn_BPM_Parameters where Code='HRCancelLeaveSignMembers' and ITEM1='" + strBU + "' and ITEM2='" + strLocation + "'";
+	return Client.SQLloadValue(strSQL);
+}
+
+

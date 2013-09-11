@@ -1,0 +1,141 @@
+loadLibrary("com.KEYWIN.Common.XML");
+loadLibrary("com.KEYWIN.Common.SystemConfig");
+
+function exportHrXML(successFlowTo, failFlowTo) {
+	Server.addExeLog("**********exportHrXML 開始!!");
+	var artIns = MyTask.getArtInstance();
+	var applierID = artIns.getAppValue("hdnApplierID");
+	var bu = artIns.getAppValue("hdnBU");
+	
+	var objRS = Server.SQLloadValue("select ATT_BU from SYN_EMPLOYEE_INFO where EMP_NO='" + applierID + "' AND ATT_BU IS NOT NULL");
+	if (objRS) {
+	    if (objRS.size() > 0) {
+		    bu = objRS.get(0).get("ATT_BU");
+		}
+	}
+	
+	var senderID = "OA_BPM_" + bu;
+	var receiverID = (bu.equals("TW") ? "OA_EHR_TW" : "OA_HRE_" + bu);
+		
+	//Time
+	var localTime = getCurrTime(false);
+	var gmtTime = getCurrTime(true);
+	
+	
+	//-----------XML字串起始---------------------------------------------------------
+	var expXml = new java.lang.StringBuffer("<?xml version='1.0' encoding='UTF-8'?>");
+	expXml.append("<xevcRequest>");
+	expXml.append("<messageHeader>");
+		
+	expXml.append("<senderID>").append(senderID).append("</senderID>");　
+	expXml.append("<receiverID>").append(receiverID).append("</receiverID>"); 
+	expXml.append("<senderRegion />");
+	expXml.append("<messageVersion>1.1</messageVersion>");
+	expXml.append("<messageID>ULJPRSTIWFZX</messageID>");
+	expXml.append("<sessionID>ULJPRSTIWFZX</sessionID>");
+	expXml.append("<sessionKeepAlive>1</sessionKeepAlive>");	
+	expXml.append("<gmtTimeStamp>").append(gmtTime).append("</gmtTimeStamp>");
+	expXml.append("<localTimeStamp>").append(localTime).append("</localTimeStamp>");
+	expXml.append("<systemCredentials>");
+	expXml.append("<senderName />");
+	expXml.append("<senderAuthenticator />");
+	expXml.append("</systemCredentials>");
+	expXml.append("<messageTypeList>");
+	expXml.append("<messageType>");	
+	expXml.append("<messageTypeName />");
+	expXml.append("<messageTypeValue />");
+	expXml.append("</messageType>");
+	expXml.append("</messageTypeList>");
+	expXml.append("</messageHeader>");
+	//-----------XML拋轉內容---------------------------------------------------------
+
+	expXml.append("<messageContent>");
+	expXml.append("<xevcReqDataList>");
+	expXml.append("<xevcReqDataVO>");
+		
+	//xevcReqDataVO內容
+	var rowList = artIns.getAppDataMap().get("tabLeaveRecordDetail"); //取得表格內容
+	var cancelVacationFormId = artIns.getAppValue("labFormNo");
+	var vacationFormId = rowList.get(0).get("ITEM16");//取第一個項目的單號
+    var empId = artIns.getAppValue("hdnApplierID");
+	var company = artIns.getAppValue("hdnApplierCompanyCode");　	
+	var deptId = artIns.getAppValue("hdnApplierDeptID");//部門ID要用舊的部門ID?
+	
+	expXml.append("<cancelVacationFormId>").append(cancelVacationFormId).append("</cancelVacationFormId>");	
+	expXml.append("<vacationFormId>").append(vacationFormId).append("</vacationFormId>");	
+	expXml.append("<empId>").append(empId).append("</empId>");
+	expXml.append("<company>").append(company).append("</company>");
+	expXml.append("<deptId>").append(deptId).append("</deptId>");
+	
+	
+	//redsReqDataList內容
+	expXml.append("<xevcDetailDataList>");	
+	
+	var applicant = artIns.getAppDataMap().get("hdnFillID"); //取得表填單人ID
+	var approver = rowList.get(0).get("ITEM13"); //取得作業審核接收人員	
+	var approveDate = rowList.get(0).get("ITEM14"); //作業審核日期
+	var cancelLeaveReason = artIns.getAppDataMap().get("tarCancelLeaveReason");//銷假理由
+	
+	
+	for (var i=0; i<rowList.size(); i++) {
+		if("true".equals(rowList.get(i).get("ITEM11"))){
+			//有勾選到的才進行拋轉			
+			expXml.append("<xevcDetailDataVO>");		
+			expXml.append("<cancelVacationFormId>").append(cancelVacationFormId).append("</cancelVacationFormId>");	
+			var LeaveStart = rowList.get(i).get("ITEM4"); //起始時間　
+			var LeaveEnd = rowList.get(i).get("ITEM5"); //終止時間
+			var subLeaveID = rowList.get(i).get("ITEM9"); //子假別ID	
+			var SN = rowList.get(i).get("ITEM8"); //序號					
+			
+			expXml.append("<lineNo>").append(SN).append("</lineNo>");//要銷假的項目序號欄			
+			expXml.append("<vacationFormId>").append(vacationFormId).append("</vacationFormId>");//請假單號
+			expXml.append("<vacationLineNo>").append(SN).append("</vacationLineNo>");//欲銷假的請假單項目序號			
+			expXml.append("<vacationId>").append(rowList.get(i).get("ITEM3")).append("</vacationId>");//假別ID		
+			//if (!subLeaveID.equals("")){ //如果子假別欄位不為空就要拋
+				expXml.append("<vacationSid>").append(rowList.get(i).get("ITEM9")).append("</vacationSid>");//子假別ID
+			//}		
+			expXml.append("<startDate>").append(LeaveStart.substring(0,4) + LeaveStart.substring(5,7) + LeaveStart.substring(8,10)).append("</startDate>");//起始日期
+			expXml.append("<startTime>").append(LeaveStart.substring(11,13) + LeaveStart.substring(14,16)).append("</startTime>");//起始時間
+			expXml.append("<endDate>").append(LeaveEnd.substring(0,4) + LeaveEnd.substring(5,7) + LeaveEnd.substring(8,10)).append("</endDate>");//結束日期
+			expXml.append("<endTime>").append(LeaveEnd.substring(11,13) + LeaveEnd.substring(14,16)).append("</endTime>");//結束時間
+			expXml.append("<totalHours>").append(rowList.get(i).get("ITEM6")).append("</totalHours>");//請假時數
+			expXml.append("<agent>").append(rowList.get(i).get("ITEM12")).append("</agent>");//代理人ID		
+			expXml.append("<approver>").append(approver).append("</approver>");//作業審核人員	
+			expXml.append("<approveDate>").append(approveDate).append("</approveDate>");//作業審核日期	
+			expXml.append("<applicant>").append(applicant).append("</applicant>");//填單人ID	
+			expXml.append("<note>").append(cancelLeaveReason).append("</note>");//銷假理由	
+			expXml.append("</xevcDetailDataVO>");
+		}
+	}
+
+	
+	expXml.append("</xevcDetailDataList>");
+	expXml.append("</xevcReqDataVO>");
+	expXml.append("</xevcReqDataList>");
+	expXml.append("</messageContent>");
+	expXml.append("</xevcRequest>");
+	
+	//-----------XML字串結束---------------------------------------------------------
+
+	
+	var xmlStr = expXml.toString();
+	Server.addExeLog("**********exportHrXML xml 字串= " + xmlStr);
+	
+	insertXmlLog(xmlStr, cancelVacationFormId);
+	var rCode = 200;
+	
+	if(getWebMode() == 1) {
+		rCode = callXmlWebService(xmlStr);
+	}
+	Server.addExeLog("**********exportHrXML callXmlWebService rCode : " + rCode);
+	Server.addExeLog("**********exportHrXML 結束!");
+	
+	if(rCode != 200){
+		return failFlowTo; 
+	}
+	
+	
+	return successFlowTo;
+}
+
+

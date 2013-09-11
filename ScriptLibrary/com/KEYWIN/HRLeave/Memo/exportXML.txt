@@ -1,0 +1,95 @@
+loadLibrary("com.KEYWIN.Common.XML");
+loadLibrary("com.KEYWIN.Common.SystemConfig");
+
+function exportHrXML(successFlowTo, failFlowTo) {
+	Server.addExeLog("exportHrXML Start !!!");
+	var artIns = MyTask.getArtInstance();
+	var applierID = artIns.getAppValue("txtApplier");
+	var bu = artIns.getAppValue("hdnBU");
+	
+	var objRS = Server.SQLloadValue("select ATT_BU from SYN_EMPLOYEE_INFO where EMP_NO='" + applierID + "'");
+	if (objRS) {
+	    if (objRS.size() > 0) {
+		    bu = objRS.get(0).get("ATT_BU");
+		}
+	}
+	
+	var senderID = "OA_BPM";
+	var receiverID = (bu.equals("TW") ? "OA_EHR" : "OA_HRE_" + bu);
+		
+	//Time
+	var localTime = getCurrTime(false);
+	var gmtTime = getCurrTime(true);
+	
+	var expXml = new java.lang.StringBuffer("<?xml version='1.0' encoding='UTF-8'?>");
+	expXml.append("<xncasRequest>");
+	expXml.append("<messageHeader>");
+	expXml.append("<senderID>").append(senderID).append("</senderID>");
+	expXml.append("<receiverID>").append(receiverID).append("</receiverID>");
+	expXml.append("<senderRegion />");
+	expXml.append("<messageVersion>1.1</messageVersion>");
+	expXml.append("<messageID>ULJPRSTIWFZX</messageID>");
+	expXml.append("<sessionID>ULJPRSTIWFZX</sessionID>");
+	expXml.append("<sessionKeepAlive>1</sessionKeepAlive>");
+	expXml.append("<gmtTimeStamp>").append(gmtTime).append("</gmtTimeStamp>");
+	expXml.append("<localTimeStamp>").append(localTime).append("</localTimeStamp>");
+	expXml.append("<systemCredentials>");
+	expXml.append("<senderName />");
+	expXml.append("<senderAuthenticator />");
+	expXml.append("</systemCredentials>");
+	expXml.append("<messageTypeList>");
+	expXml.append("<messageType>");
+	expXml.append("<messageTypeName />");
+	expXml.append("<messageTypeValue />");
+	expXml.append("</messageType>");
+	expXml.append("</messageTypeList>");
+	expXml.append("</messageHeader>");
+	
+	//�ӽг渹
+	var slipNO = artIns.getAppValue("labReqNO");
+    var department = artIns.getAppValue("txtDepartment");
+	
+	expXml.append("<messageContent>");
+	expXml.append("<xncabReqDataList>");
+	expXml.append("<xncasReqDataVO>");
+	expXml.append("<slipNO>").append(slipNO).append("</slipNO>");
+	expXml.append("<department>").append(department).append("</department>");
+	expXml.append("<applyMan>").append(applierID).append("</applyMan>");
+	expXml.append("<redsReqDataList>");
+	
+	var rowList = artIns.getAppDataMap().get("tblApplyDetail");
+	for (var i=0; i<rowList.size(); i++) {
+	    var applyType = rowList.get(i).get("ITEM6");
+		var applyDate = rowList.get(i).get("ITEM3");
+		
+		expXml.append("<redsReqDataVO>");
+		expXml.append("<slipNO>").append(slipNO).append("</slipNO>");
+		expXml.append("<lineNo>").append(rowList.get(i).get("ITEM1")).append("</lineNo>");
+		expXml.append("<applyDate>").append(applyDate.substring(0,4) + applyDate.substring(5,7) + applyDate.substring(8,10)).append("</applyDate>");
+		expXml.append("<applyType>").append(applyType).append("</applyType>");
+		if (applyType.equals("1")) expXml.append("<nctype />");
+		else expXml.append("<nctype>").append(rowList.get(i).get("ITEM7")).append("</nctype>");
+		expXml.append("<ncperiod>").append(rowList.get(i).get("ITEM8")).append("</ncperiod>");
+		expXml.append("</redsReqDataVO>");
+	}
+	
+	expXml.append("</redsReqDataList>");
+	expXml.append("</xncasReqDataVO>");
+	expXml.append("</xncabReqDataList>");
+	expXml.append("</messageContent>");
+	expXml.append("</xncasRequest>");
+		
+	var xmlStr = expXml.toString();
+	Server.addExeLog("exportHrXML xml : " + xmlStr);
+	
+	insertXmlLog(xmlStr, slipNO);
+	var rCode = 200;
+	if(getWebMode() == 1) rCode = callXmlWebService(xmlStr);
+	Server.addExeLog("exportHrXML callXmlWebService rCode : " + rCode);
+	Server.addExeLog("exportHrXML End !!!");
+	
+	if(rCode != 200){
+		return failFlowTo; 
+	}
+	return successFlowTo;
+}

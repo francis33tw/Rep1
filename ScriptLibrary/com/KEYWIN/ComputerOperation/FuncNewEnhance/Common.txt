@@ -1,0 +1,54 @@
+//注意：本function為【功能新增強化】、【專案需求變更】共用
+function updateRootTaskManagerData(strRootInsID, strSN, strSubTaskRootID){
+	loadLibrary("com.KEYWIN.Common.SystemConfig");
+	var rootDoc = Server.getArtInstance(strRootInsID);
+	var vecMgrTable = rootDoc.getAppDataMap().get("tabAudit");
+	for(var i=0; i<vecMgrTable.size(); i++){
+		var strTableSN = vecMgrTable.get(i).get("ITEM1");
+		if(strTableSN.equals(strSN)){
+			vecMgrTable.get(i).put("ITEM4", strSubTaskRootID);
+			logInfo("TestByMos SN: "+strSN+", 更新SubTaskID為"+strSubTaskRootID, 1);
+			break;
+		}
+	}
+	Server.updateArtInstance(rootDoc);
+}
+
+//注意：本function為【功能新增強化】、【專案需求變更】共用
+//子流程寫入簽核意見table(元件id: subAuditTable)
+function appendSubtaskProcessTable() {
+	loadLibrary("com.KEYWIN.Common.SystemConfig");
+	var artIns = MyTask.getArtInstance();
+	var formMap = artIns.getAppDataMap();
+	var table = formMap.get("subAuditTable");
+	var mNumber = Server.getMemberByID(MyTask.getMemberID()).getMyID();
+	var mName = Server.getMemberByID(MyTask.getMemberID()).getName();
+	var cal = new java.util.Calendar.getInstance();
+	var format = new Packages.java.text.SimpleDateFormat();
+	format.applyPattern("yyyy/MM/dd HH:mm:ss");
+	var date = format.format(cal.getTime()).toString();
+	var auditCombo = artIns.getAppValue("auditCombo");
+	var opinion = artIns.getAppValue("opinion");
+
+	var taskName = MyTask.getName();
+	var rowMap = new java.util.HashMap();
+	rowMap.put("ITEM7",mNumber+"-"+mName);
+	rowMap.put("ITEM5",date);
+	rowMap.put("ITEM4",opinion);
+	rowMap.put("ITEM3",taskName);
+	// 增加終止、撤銷至簽核歷程_Y130128
+	if ("1".equals(artIns.getAppValue("back"))) {
+		rowMap.put("ITEM2","退回重辦");
+	} else if ("1".equals(artIns.getAppValue("shutdown"))) {
+		rowMap.put("ITEM2","已終止");
+	} else if ("2".equals(artIns.getAppValue("shutdown"))) {
+		rowMap.put("ITEM2","已撤銷");
+	} else {
+		rowMap.put("ITEM2","已處理");
+	}
+	rowMap.put("ITEM1",(table.size()+1)+"");	
+	table.add(rowMap);
+	artIns.setAppValue("subAuditTable",table);	
+	artIns.setAppValue("opinion","");
+	Server.updateArtInstance(artIns);
+}

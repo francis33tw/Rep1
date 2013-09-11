@@ -1,0 +1,71 @@
+function getSerialNumber(aID) {
+    var strSQL = "select rtrim(max(substring(ITEM23,8,5))) sn from " + aID + "_Ins where len(ITEM23)=12";
+	var objRS = getContext().SQLloadValue(strSQL);
+	var sn = ""; 
+	
+	if (objRS == null || objRS.size() == 0 || objRS.elementAt(0).get("sn").equals("")) sn = "00001";
+	else {
+	    var rs = java.lang.Integer.parseInt(objRS.elementAt(0).get("sn")) + 1;
+		sn = java.lang.Integer.toString(rs);
+		sn = (rs > 99999 ? "00001" : (rs < 10 ? "0000" : (rs < 100 ? "000" : (rs < 1000 ? "00" : (rs < 10000 ? "0" : "")))) + sn);
+	}
+		
+	return sn;
+}
+
+function getManagerOrNot(FillID) {
+    var sqlIsMGR = "select MGRCODE from syn_employee_info where EMP_NO = '" + FillID + "'  ";
+    
+	if (!"*".equals(getContext().SQLloadValue(sqlIsMGR).get(0).get("MGRCODE"))) return true;
+    else return false;
+}
+
+function getStrategizeOrNot(FillID) {
+    var sqlIsMGR = "select FUNC_TYPE from syn_employee_info where EMP_NO = '" + FillID + "'  ";
+    
+	if ("2".equals(getContext().SQLloadValue(sqlIsMGR).get(0).get("FUNC_TYPE"))) return true;
+    else return false;
+}
+
+function getTimesHistoryData(memID) {
+	var strSQL = "select top 12 * from SYN_HR_MemoCount where EmpID='" + memID + "' order by ApplyeYearMonth desc";
+	
+	return getContext().SQLloadValue(strSQL);
+}
+
+function getReasonHistoryData(memID,applyYear) {
+	var strSQL = "select A.*,B.UserName username from SYN_HR_ATTMemo A join Mem_GenInf B on A.EmpID=B.ID " +
+	             "where A.EmpID='" + memID + "' and A.ApplyType='公出免刷卡申請' " +
+				 "and A.ApplyDate between '" + applyYear + "/01/01' and '" + applyYear + "/12/31' order by A.ApplyDate desc";
+	
+	return getContext().SQLloadValue(strSQL);
+}
+
+function getDetailHistoryData(memID) {
+	var strSQL = "select top 12 * from SYN_HR_MemoCount where EmpID='" + memID + "' order by ApplyeYearMonth desc";
+	
+	return getContext().SQLloadValue(strSQL);
+}
+
+function getHRSigner(strBU,strLocation) {
+	var strSQL = "select MappingValue from Syn_BPM_Parameters where Code='HRSignMembers' and ITEM1='" + strBU + "' and ITEM2='" + strLocation + "'";
+	
+	return getContext().SQLloadValue(strSQL);
+}
+
+function getAdminSigner() {
+	var strSQL = "select MappingValue from Syn_BPM_Parameters where Code='Admin'";
+	
+	return getContext().SQLloadValue(strSQL);
+}
+
+function getLocation(loginID) {
+	var strSQL = "select LOCATION from Syn_EMPLOYEE_INFO where EMP_NO='" + loginID + "'";
+	var result = getContext().SQLloadValue(strSQL);
+	
+	if(result.size() > 0) {
+		return result.get(0).get("LOCATION");
+	}
+	
+	return "";
+}

@@ -1,0 +1,181 @@
+function validRequireAndType(objValue, strDisplayName, IgnoreEnable, IsRequire, strType){
+	var errormsg = "";
+	//20121228 add Mos
+	objValue = objValue.trim();
+	if(objValue.equals("")){
+		if(IsRequire){
+			if(strType.equals("int")){
+				errormsg = "「"+strDisplayName+"」必填！且請填為﹝整數﹞！\n";
+			} else if(strType.equals("positive_int")){
+				errormsg = "「"+strDisplayName+"」必填！且請填為﹝正整數﹞！\n";
+			} else if(strType.equals("float")){
+				errormsg = "「"+strDisplayName+"」必填！且請填為﹝數字﹞！\n";
+			}else if(strType.equals("date")){
+				errormsg = "「"+strDisplayName+"」必填！且請填為﹝日期(yyyy/mm/dd)﹞！\n";
+			}else if(strType.equals("ln")){
+				errormsg = "「"+strDisplayName+"」必填！且請填為﹝英數﹞！\n";
+			}
+		}
+	}else{
+		if(!validType(objValue, strType)){
+			errormsg = "「"+strDisplayName+"」";
+			if(IsRequire)errormsg += "必填！";
+			if(strType.equals("int")){
+				errormsg += "且請填為﹝整數﹞！\n";
+			}else if(strType.equals("positive_int")){
+				errormsg += "且請填為﹝正整數﹞！\n";
+			}else if(strType.equals("float")){
+				errormsg += "且請填為﹝數字﹞！\n";
+			}else if(strType.equals("date")){
+				errormsg += "且請填為﹝日期(yyyy/mm/dd)﹞！\n";
+			}else if(strType.equals("ln")){
+				errormsg += "且請填為﹝英數﹞！\n";
+			}
+		}
+	}
+
+	return errormsg;
+}
+function validRequire(strIDName, strDisplayName, IgnoreEnable, CustomFunc){
+	loadLibrary("co.Keywin.Common.SystemConfig");
+	function __DefaultFunc(strIDName, strDisplayName, IgnoreEnable){
+		var errormsg = "";
+		var objItem = Form.getComponent(strIDName);
+		//20121228 modified Mos
+		//var objValue = Form.getValue(strIDName);
+		var objValue = Form.getValue(strIDName).trim();
+		var ItemType = objItem.getClass().getName();
+	
+		if(
+			ItemType.equals("fcomponent.FTextField")
+			||ItemType.equals("fcomponent.FTextArea")
+			||ItemType.equals("javax.swing.JTextField")
+			||ItemType.equals("fcomponent.FLabel")
+			||ItemType.equals("pase.agenda.OtherComponent")
+		){
+			if(objValue.equals("")) errormsg = "「"+strDisplayName+"」必填！\n";
+		}else if(ItemType.equals("fcomponent.FComboBox")){
+			if(objItem.getSelectedIndex()<=0) errormsg = "「"+strDisplayName+"」必填！\n";
+		}else if(ItemType.equals("com.flowring.util.component.HTMLTableModel") || ItemType.equals("fcomponent.FTableScrollPane")){
+			if(objItem.getRowCount()<=0) errormsg = "「"+strDisplayName+"」必填！\n";
+		}else{
+			errormsg = "無效的物件\n";
+			logInfo("無效的物件:\nID:"+strIDName+",DisplayName:"+strIDName+",Miss ClassName:"+ItemType,1)
+		}
+
+		if(IgnoreEnable || objItem.isEnabled())
+			return errormsg;
+		else
+			return "";
+	}
+	var CurrentFunc = __DefaultFunc;
+	if(CustomFunc!=null)CurrentFunc = CustomFunc;
+	return CurrentFunc(strIDName, strDisplayName, IgnoreEnable);
+}
+function validLength(strValue, strDisplayName, iLength, CustomFunc){
+	function __DefaultFunc(strValue, strDisplayName, iLength){
+		//java.lang.System.out.println(strName+" data length : "+strValue.length());
+		if(strValue.length()>iLength) return "「"+strDisplayName+"」不可輸入超過"+iLength+"個字！\n";;
+		return "";
+	}
+	var CurrentFunc = __DefaultFunc;
+	if(CustomFunc!=null)CurrentFunc = CustomFunc;
+	return CurrentFunc(strValue, strDisplayName, iLength);
+}
+function validValue(strValue, strDisplayName, MinValue, MaxValue, CustomFunc){
+	var errormsg = "";
+	function __DefaultFunc(strValue, strDisplayName, MinValue, MaxValue){
+		//java.lang.System.out.println(strName+" data value : "+java.lang.Double(strValue));
+		if(java.lang.Double(strValue)>MaxValue) return "「"+strDisplayName+"」必須介於"+MinValue.toString()+"到"+MaxValue.toString()+"之間！\n";;
+		if(java.lang.Double(strValue)<MinValue) return "「"+strDisplayName+"」必須介於"+MinValue.toString()+"到"+MaxValue.toString()+"之間！\n";;
+		return "";
+	}
+	var CurrentFunc = __DefaultFunc;
+	if(CustomFunc!=null)CurrentFunc = CustomFunc;
+	return CurrentFunc(strValue, strDisplayName, MinValue, MaxValue);
+}
+function validType(strValue, strType, CustomFunc){
+	function __DefaultFunc(strValue, strType){
+		if(strType.equals("int")){
+			if(strValue.indexOf(".")>0) return false;
+			var regExp = /^[\d|a-zA-Z]+$/;	
+			if (!regExp.test(strValue)) return false;
+			if(isNaN(strValue)) return false;
+			if(strValue.substring(0, 1).equals("0") && strValue.length() > 1)return false;
+		} else if(strType.equals("positive_int")){
+			//需為大於0的正整數
+			if(strValue.indexOf(".")>0) return false;
+			
+			var regExp = /^[\d|a-zA-Z]+$/;	
+			if (!regExp.test(strValue)) return false;
+			if(isNaN(strValue)) return false;			
+			if(strValue.substring(0, 1).equals("0") && strValue.length() > 1)return false;
+			if(java.lang.Double(strValue)<1) return false;
+		} else if(strType.equals("float")){
+			var regExp = /^[\.\d|a-zA-Z]+$/;
+			//....START....20130429 MODI Evan Mantis 771(允許可輸入負浮點數)
+			if(strValue.equals("0")) return true;	//20130411 add Mos TIS專案客製：可接受"0"		
+			var regExpNegativeFloat = /^(-(([0-9]+\.[0-9]*[1-9][0-9]*)|([0-9]*[1-9][0-9]*\.[0-9]+)|([0-9]*[1-9][0-9]*)))$/; //驗證負浮點數 
+			if (!regExp.test(strValue)){
+				if (!regExpNegativeFloat.test(strValue)){
+					return false;
+				}				
+			} 				
+			//....END....20130429 MODI Evan Mantis 771(允許可輸入負浮點數)
+			if(isNaN(strValue)) return false;
+			if(strValue.substring(0, 1).equals("0")){
+				if(strValue.length() < 3)
+					return false;
+				else{
+					if(!strValue.substring(1, 2).equals("."))return false;
+				}
+			}
+//			if(strValue.indexOf(".")==-1)
+//				return false;
+//			if(strValue.indexOf(".")>0){
+//				if(strValue.substring(strValue.length()-1, strValue.length()).equals("0"))return false;
+//			}
+		}else if(strType.equals("date")){
+			var dateChecker = new Packages.java.text.SimpleDateFormat("yyyy/MM/dd");
+			try{
+				var objDate = new Packages.pase.agenda.MyDate(dateChecker.parse(strValue));
+				if(!objDate.getCurrentDate().equals(strValue))
+					return false;
+			}catch(e){
+				return false;
+			}			
+		}else if(strType.equals("ln")){
+			var regExp = /^[\d|a-zA-Z]+$/;
+	
+			if (regExp.test(strValue)) return true;
+			else return false;
+                }
+		return true;
+	}
+	var CurrentFunc = __DefaultFunc;
+	if(CustomFunc!=null)CurrentFunc = CustomFunc;
+	//20121228 add Mos
+	strValue = strValue.trim();
+	return CurrentFunc(strValue, strType);
+}
+
+//驗證CheckboxList是否有被勾選一個
+//vecChkList: 傳入存取名稱
+//labName: 回傳不可為空欄位名稱
+function validRequireChkList(vecChkList, labName){
+	var hasChecked = false;
+	var c = vecChkList.size();
+	for(var i=0; i<c; i++) {
+		if(Form.getValue(vecChkList.get(i)).equals("true")){
+			hasChecked = true;
+			break;
+		}
+	}
+	
+	if(hasChecked == false) {
+		return "「"+labName+"」必填！\n";
+	}else{
+		return "";
+	}
+}
+

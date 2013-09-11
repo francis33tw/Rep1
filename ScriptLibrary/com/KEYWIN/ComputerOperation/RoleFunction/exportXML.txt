@@ -1,0 +1,119 @@
+loadLibrary("com.KEYWIN.Common.XML");
+loadLibrary("com.KEYWIN.Common.SystemConfig");
+loadLibrary("com.KEYWIN.ComputerOperation.SQLLib");
+loadLibrary("com.KEYWIN.ComputerOperation.RoleFunction.SQLLib");
+
+function exportHrXML(successFlowTo, failFlowTo) {
+	Server.addExeLog("exportHrXML Start !!!");
+	var artIns = MyTask.getArtInstance();
+	var applierID = artIns.getAppValue("txtApplierNo");
+	var applierMID = artIns.getAppValue("hdnApplierMID");
+	var applierName = artIns.getAppValue("hdnApplierName");
+	var applierDate = artIns.getAppValue("labApplyDate");
+	var applierDept = artIns.getAppValue("labApplierDeptName");
+	var opAuditor = artIns.getAppValue("hdnOPAuditor");
+	var bu = artIns.getAppValue("cboBU");
+	var tarContent = artIns.getAppValue("tarContent");
+	var calFinishDate = artIns.getAppValue("calFinishDate");
+	var labFormNum = artIns.getAppValue("labFormNum");
+	var txtMIS = artIns.getAppValue("txtMIS");
+	var tblOP = artIns.getAppDataMap().get("tblOP");
+	var reporter_idap_id = getLDAPIDByMemID(applierMID);
+	var senderID = "OA_BPM_" + bu;
+		
+	//Time
+	var localTime = getCurrTime(false);
+	var gmtTime = getCurrTime(true);
+	
+	var expXml = new java.lang.StringBuffer("<?xml version='1.0' encoding='UTF-8'?>");
+	expXml.append("<toJiraResponseRequest>");
+	expXml.append("<messageHeader>");
+	expXml.append("<senderID>").append(senderID).append("</senderID>");
+	expXml.append("<receiverID>OA_JIRA</receiverID>");
+	expXml.append("<senderRegion />");
+	expXml.append("<messageVersion>1.1</messageVersion>");
+	expXml.append("<messageID>ULJPRSTIWFZX</messageID>");
+	expXml.append("<sessionID>ULJPRSTIWFZX</sessionID>");
+	expXml.append("<sessionKeepAlive>1</sessionKeepAlive>");
+	expXml.append("<gmtTimeStamp>").append(gmtTime).append("</gmtTimeStamp>");
+	expXml.append("<localTimeStamp>").append(localTime).append("</localTimeStamp>");
+	expXml.append("<systemCredentials>");
+	expXml.append("<senderName />");
+	expXml.append("<senderAuthenticator />");
+	expXml.append("</systemCredentials>");
+	expXml.append("<messageTypeList>");
+	expXml.append("<messageType>");
+	expXml.append("<messageTypeName />");
+	expXml.append("<messageTypeValue />");
+	expXml.append("</messageType>");
+	expXml.append("</messageTypeList>");
+	expXml.append("</messageHeader>");
+	
+	expXml.append("<messageContent>");
+	expXml.append("<toJiraReqDataList>");
+	
+	var allOP = "";
+	for (var x=0; x<tblOP.size(); x++) {
+	    allOP += (allOP.equals("") ? "" : ",") + "'" + tblOP.elementAt(x).get("ITEM1") + "'";
+	}
+		
+	var objRS = getJIRAData(allOP);
+	for (var i=0; i<objRS.size(); i++) {
+	    expXml.append("<toJiraReqDataVO>");
+		expXml.append("<type>C</type>");
+		expXml.append("<jiraNO>").append(objRS.elementAt(i).get("jira_no")).append("</jiraNO>");
+		expXml.append("<manager>").append(getLDAPIDByMemID("MEMC_" + objRS.elementAt(i).get("assigner"))).append("</manager>");
+		expXml.append("<reporter>").append(reporter_idap_id).append("</reporter>");
+		expXml.append("<arNumbers>").append(labFormNum).append("</arNumbers>");
+		expXml.append("<applicationCategory><![CDATA[角色內功能權限]]></applicationCategory>");
+		expXml.append("<summary>").append(labFormNum).append("</summary>");
+		expXml.append("<applicant>").append(applierID).append("-").append(applierName).append("</applicant>");
+		expXml.append("<applicantUnit>").append(applierDept).append("</applicantUnit>");
+		expXml.append("<applicantDate>").append(applierDate).append("</applicantDate>");
+		expXml.append("<projectName><![CDATA[角色內功能權限]]></projectName>");
+		expXml.append("<module><![CDATA[角色內功能權限]]></module>");
+		if (txtMIS.equals("")) expXml.append("<contactMIS />");
+		else expXml.append("<contactMIS>").append(txtMIS).append("</contactMIS>");
+		if (calFinishDate.equals("")) expXml.append("<completeDate />");
+		else expXml.append("<completeDate>").append(calFinishDate).append("</completeDate>");
+		expXml.append("<demandCategory />");
+		expXml.append("<demandItem />");
+		expXml.append("<demandContent>").append(tarContent).append("</demandContent>");
+		//附件清單
+		expXml.append("<attachFileList>");
+		var attUploadFile = artIns.getAppValue("attFile");  
+		var filenum = attUploadFile.split("\n\n");  
+		var filePath = "";
+		for (var j=0; j < filenum.length; j++){    
+			var filelist = filenum[j].split("\t\t");    
+			var strFileName = filelist[0];
+			var strFileID = filelist[1];
+			var strInsID = filelist[4];
+			var strFilePath = "http://" + Server.getServerEnv().getServerHost() + ":8080/WebAgenda" + "\\download?fileID=" + strFileID + "&modelName=attFile&itemID=ITEM3&artInsID=" + strInsID;
+			expXml.append("<attachFile>");
+			expXml.append("<attachFileName>").append(strFileName).append("</attachFileName>");
+			expXml.append("<attachFileURL><![CDATA[").append(strFilePath).append("]]></attachFileURL>");
+			expXml.append("</attachFile>");
+		}
+		expXml.append("</attachFileList>");
+		expXml.append("</toJiraReqDataVO>");
+	}
+	
+	expXml.append("</toJiraReqDataList>");
+	expXml.append("</messageContent>");
+	expXml.append("</toJiraResponseRequest>");
+		
+	var xmlStr = expXml.toString();
+	Server.addExeLog("exportHrXML xml : " + xmlStr);
+	
+	insertXmlLog(xmlStr, labFormNum);
+	var rCode = 200;
+	if(getWebMode() == 1) rCode = callXmlWebService(xmlStr);
+	Server.addExeLog("exportHrXML callXmlWebService rCode : " + rCode);
+	Server.addExeLog("exportHrXML End !!!");
+	
+	if(rCode != 200){
+		return failFlowTo; 
+	}
+	return successFlowTo;
+}

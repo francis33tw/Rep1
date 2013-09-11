@@ -1,0 +1,259 @@
+loadLibrary("com.KEYWIN.Common.SystemConfig");
+loadLibrary("com.KEYWIN.Common.SQLLib");
+
+function getOpenWinMemList(DeptID,hdnBU){
+        var strSQL = "";
+        strSQL =  "SELECT ";
+        strSQL += " RTRIM (XMLAGG (XMLELEMENT (\"ASSIGNER\", ID || ',')).EXTRACT ('//text()'),',') MEMLISTS";
+        strSQL += " FROM ";
+        strSQL += "(select DISTINCT M.ID, M.UserName, D.Name, M.MemID, D.DepID";
+		strSQL += " FROM MEM_GENINF M LEFT JOIN ROL_MEM R ON M.MEMID = R.MEMID";
+		strSQL += " LEFT JOIN ROL_GENINF RG ON R.ROLID = RG.ROLID  ";
+		strSQL += " LEFT JOIN DEP_GENINF D ON RG.DEPID = D.DEPID  ";
+		strSQL += " LEFT JOIN SYN_EMPLOYEE_INFO E ON M.ID = E.EMP_NO  ";
+		strSQL += " WHERE D.DepID like N'%"+DeptID+"%'  ";
+		strSQL += "AND M.RESIGN !='true' ";
+		strSQL += "AND M.INVISIBLE != 'true'  ";
+		strSQL += "AND M.DENIEDLOGIN !='true' ";			
+		strSQL += "AND D.NAME NOT LIKE '*%' ";
+		strSQL += "AND D.ID = '1' ";
+		strSQL += "AND D.RESPON LIKE '%BU="+hdnBU+"%') ";
+
+        return Client.SQLloadValue(strSQL);
+}
+
+function getEveryLeaveHourInProcess(ApplierID,InsID) {
+	 var strSQL = "";
+    strSQL += "SELECT INS.ITEM1 LEAVENAME,INS.ITEM12 LEAVEID,SUM(TO_NUMBER(INS.ITEM6)) HOURS";	
+    strSQL += " FROM ART00431367490149196ITEM51 INS ";
+	strSQL += " JOIN ARTINSTANCE ART ON INS.INSID = ART.INSID ";
+	strSQL += " JOIN ART_STATE ARTSTATE ON ARTSTATE.ASTID = ART.ASTID ";
+	strSQL += " WHERE INS.INSID<>'"+InsID+"'";
+	strSQL += " AND INS.ITEM9='"+ApplierID+"'";
+	strSQL += " AND ARTSTATE.NAME NOT IN('已發行','終止流程')";
+	strSQL += " GROUP BY INS.ITEM1,INS.ITEM12";
+	
+	return Client.SQLloadValue(strSQL);
+	
+}
+
+
+
+function getLocation(loginID) {
+	var strSQL = "select LOCATION from Syn_EMPLOYEE_INFO where EMP_NO='" + loginID + "'";
+	var result = Client.SQLloadValue(strSQL);
+	
+	if(result.size() > 0) {
+		return result.get(0).get("LOCATION");
+	}	
+	return "";
+}
+
+function getAdminSigner() {
+	var strSQL = "select MappingValue from Syn_BPM_Parameters where Code='Admin'";	
+	return Client.SQLloadValue(strSQL);
+}
+
+function getMaxLeaveHoursNoSub(hdnSystemYear,hdnApplierID,hdnSelectLeaveType,hdnBU) {
+	//沒有子假別的假別
+    var strSQL = "";
+    strSQL += "SELECT A.LEAVE_ID LEAVEID ,A.MAX_HOURS RAWDATA,  NVL(A.AMT_HOURS,0) AMT_HOURS, DECODE(A.MAX_HOURS,NULL,'9999',MAX_HOURS)*1 MAX_HOURS_EDIT";
+    strSQL += " FROM V_VACATION_SUM A";
+    strSQL += " WHERE YEAR='"+hdnSystemYear+"' AND EMP_NO='"+hdnApplierID+"' "; 
+	strSQL += " AND LEAVE_ID='"+hdnSelectLeaveType+"'";
+	
+	if(getWebMode() == 1) {
+	//if(getWebMode() == 0) {
+		//代表在正式環境
+		if("TW".equals(hdnBU)){
+			logInfo("*****連線到ConnEHRTW", 1) ;
+			return SQLLoadValueCommon(strSQL, "ConnEHRTW");
+		}else{
+			logInfo("*****ConnEHRCN", 1) ;
+			return SQLLoadValueCommon(strSQL, "ConnEHRCN");
+		}
+	}else{
+		//代表在測試環境
+		return Client.SQLloadValue(strSQL);
+	}
+	
+
+
+	
+}
+function getMaxLeaveHoursSub(hdnSystemYear,hdnApplierID,hdnSelectLeaveType,hdnBU) {
+	 //有子假別的假別
+    var strSQL = "";
+    strSQL += "SELECT A.LEAVE_ID LEAVEID,A.MAX_HOURS RAWDATA,  NVL(A.AMT_HOURS,0) AMT_HOURS, DECODE(A.MAX_HOURS,NULL,'9999',MAX_HOURS)*1 MAX_HOURS_EDIT";
+    strSQL += " FROM V_VACATION_SUM A";
+    strSQL += " WHERE YEAR='"+hdnSystemYear+"' AND EMP_NO='"+hdnApplierID+"' "; 
+	strSQL += " AND SUB_LEAVE_ID='"+hdnSelectLeaveType+"'";
+	if(getWebMode() == 1) {
+	//if(getWebMode() == 0) {
+		//代表在正式環境
+		if("TW".equals(hdnBU)){
+			logInfo("*****連線到ConnEHRTW", 1) ;
+			return SQLLoadValueCommon(strSQL, "ConnEHRTW");
+		}else{
+			logInfo("*****ConnEHRCN", 1) ;
+			return SQLLoadValueCommon(strSQL, "ConnEHRCN");
+		}
+	}else{
+		//代表在測試環境
+		return Client.SQLloadValue(strSQL);
+	}
+} 
+function getMaxLeaveHourFromEHRView(LeaveApplierID,Year,hdnBU) {
+    var strSQL = "";
+    strSQL += "SELECT A.LEAVE_ID LEAVEID,A.MAX_HOURS RAWDATA, NVL(A.AMT_HOURS,0) AMT_HOURS, DECODE(A.MAX_HOURS,NULL,'9999',MAX_HOURS)*1 MAX_HOURS_EDIT";
+    strSQL += " FROM V_VACATION_SUM A";
+    strSQL += " WHERE YEAR='"+Year+"' AND EMP_NO='"+LeaveApplierID+"' "; //年月分先寫固定值
+	if(getWebMode() == 1) {
+	//if(getWebMode() == 0) {
+		//代表在正式環境
+		if("TW".equals(hdnBU)){
+			logInfo("*****連線到ConnEHRTW", 1) ;
+			return SQLLoadValueCommon(strSQL, "ConnEHRTW");
+		}else{
+			logInfo("*****ConnEHRCN", 1) ;
+			return SQLLoadValueCommon(strSQL, "ConnEHRCN");
+		}
+	}else{
+		//代表在測試環境
+		return Client.SQLloadValue(strSQL);
+	}
+}
+
+function getApplierCompanyCodeData(hdnApplierID) {
+    var strSQL = "";
+    strSQL += "SELECT COMPANY_CODE";
+    strSQL += " FROM SYN_EMPLOYEE_INFO";
+    strSQL += " WHERE EMP_NO='" + hdnApplierID + "'";
+
+    return Client.SQLloadValue(strSQL);
+}
+
+
+function getScheduleByDate(hdnBU,hdnApplierID,strLeaveFromDate, strLeaveToDate) {
+    var strSQL = "";
+    strSQL += "SELECT B.*,A.SCHEDULE_DATE";
+    strSQL += " FROM SYN_HR_SCHEDULE A ,SYN_HR_SHIFT_TYPE B";
+    strSQL += " WHERE A.EMP_NO='"+hdnApplierID+"'";
+    strSQL += " AND A.SCHEDULE_DATE BETWEEN '"+strLeaveFromDate+"' AND '"+strLeaveToDate+"'";
+    strSQL += " AND A.BU_ID='"+hdnBU+"'";
+    strSQL += " AND A.SHIFT_ID=B.SHIFT_ID";
+    strSQL += " ORDER BY A.SCHEDULE_DATE";	
+
+    return Client.SQLloadValue(strSQL);
+}
+
+function getSickLeaveHoursByApplierIDAndMonth(ApplierID,ApplyMonth,InsID) {
+    var strSQL = "";
+    strSQL += "SELECT ITEM1 AS LEAVETYPE,ITEM4 AS LEAVESTART,ITEM5 AS LEAVEEND ,ITEM6 AS LEAVEHOUR ,ITEM9 AS LEAVEAPPLIERID, ITEM10 AS LEAVEAGENTID";
+    strSQL += " FROM ART00431367490149196ITEM51 INS ";
+	strSQL += " JOIN ARTINSTANCE ART ON INS.INSID = ART.INSID ";
+	strSQL += " JOIN ART_STATE ARTSTATE ON ARTSTATE.ASTID = ART.ASTID ";
+    strSQL += " WHERE INS.ITEM9='"+ApplierID+"'"; 
+	strSQL += " AND INS.ITEM12='02'"; 
+	strSQL += " AND INS.ITEM4 LIKE '%"+ApplyMonth+"%'";
+	strSQL += " AND ARTSTATE.NAME NOT IN('已發行','終止流程')";
+    return Client.SQLloadValue(strSQL)
+}
+
+
+function getLeaveHoursByApplierIDAndYear(ApplierID,LeaveTypeID,SystemYear,InsID) {
+    var strSQL = "";
+    strSQL += "SELECT ITEM1 AS LEAVETYPE,ITEM4 AS LEAVESTART,ITEM5 AS LEAVEEND ,ITEM6 AS LEAVEHOUR ,ITEM9 AS LEAVEAPPLIERID, ITEM10 AS LEAVEAGENTID";
+    strSQL += " FROM ART00431367490149196ITEM51 INS ";
+	strSQL += " JOIN ARTINSTANCE ART ON INS.INSID = ART.INSID ";
+	strSQL += " JOIN ART_STATE ARTSTATE ON ARTSTATE.ASTID = ART.ASTID ";
+    strSQL += " WHERE INS.ITEM9='"+ApplierID+"'"; 
+	strSQL += " AND INS.ITEM12='"+LeaveTypeID+"'"; 
+	strSQL += " AND INS.ITEM4 LIKE '%"+SystemYear+"%'";
+	strSQL += " AND ARTSTATE.NAME NOT IN('已發行','終止流程')";
+    return Client.SQLloadValue(strSQL)
+}
+
+function getLeaveHoursByApplierIDAndYearSub(ApplierID,SubLeaveTypeID,SystemYear,InsID) {
+    var strSQL = "";
+    strSQL += "SELECT ITEM1 AS LEAVETYPE,ITEM4 AS LEAVESTART,ITEM5 AS LEAVEEND ,ITEM6 AS LEAVEHOUR ,ITEM9 AS LEAVEAPPLIERID, ITEM10 AS LEAVEAGENTID";
+    strSQL += " FROM ART00431367490149196ITEM51 INS ";
+	strSQL += " JOIN ARTINSTANCE ART ON INS.INSID = ART.INSID ";
+	strSQL += " JOIN ART_STATE ARTSTATE ON ARTSTATE.ASTID = ART.ASTID ";
+	strSQL += " WHERE INS.INSID<>'"+InsID+"'"; 
+    strSQL += " AND INS.ITEM9='"+ApplierID+"'"; 	
+	strSQL += " AND INS.ITEM13='"+SubLeaveTypeID+"'"; 
+	strSQL += " AND INS.ITEM4 LIKE '%"+SystemYear+"%'";
+	strSQL += " AND ARTSTATE.NAME NOT IN('已發行','終止流程')";
+    return Client.SQLloadValue(strSQL)
+}
+
+
+
+
+
+
+function getHoursPerDayByApplierBU(ApplierBU) {
+    var strSQL = "";
+    strSQL += "SELECT MAPPINGVALUE";
+    strSQL += " FROM SYN_BPM_PARAMETERS";
+    strSQL += " WHERE CODE='DayHours'"; 
+	strSQL += " AND ITEM1='"+ApplierBU+"'"; 
+    return Client.SQLloadValue(strSQL)
+}
+
+
+
+function getOperatorSigner(strBU,strLocation) {
+	var strSQL = "select MappingValue from Syn_BPM_Parameters where Code='HRAttendenceSignMembers' and ITEM1='" + strBU + "' and ITEM2='" + strLocation + "'";
+	return Client.SQLloadValue(strSQL);
+}
+
+
+function getApplierLeaveRecordByMonth(LeaveApplierID,Year) {
+    var strSQL = "";
+	//1.	MAX_HOURS為null時表示不限定可休時數(休多久多可以) 以9999小時代替
+	//2.	MAX_HOURS為0時表示無可休額度(不可以休) 0
+    strSQL += "SELECT A.LEAVE_ID LEAVEID ,A.MAX_HOURS, NVL(A.AMT_HOURS,'0') AMT_HOURS, DECODE(A.MAX_HOURS,null,'9999',MAX_HOURS)*1 MAX_HOURS_EDIT";
+    strSQL += " FROM SYN_HR_VACATION_SUM A JOIN SYN_EMPLOYEE_INFO B ON A.EMP_NO=B.EMP_NO";
+    strSQL += " WHERE A.YEAR='"+Year+"' AND A.EMP_NO='"+LeaveApplierID+"' "; //年月分先寫固定值
+    strSQL += " ORDER BY A.LEAVE_ID";
+    return Client.SQLloadValue(strSQL)
+}
+
+
+
+
+function getApplierLeaveRecord(LeaveApplierID,InsID) {
+    var strSQL = "";
+    strSQL += "SELECT ITEM1 AS LEAVETYPE,ITEM4 AS LEAVESTART,ITEM5 AS LEAVEEND ,ITEM6 AS LEAVEHOUR ,ITEM9 AS LEAVEAPPLIERID, ITEM10 AS LEAVEAGENTID";
+    strSQL += " FROM ART00431367490149196ITEM51 INS";
+	strSQL += " JOIN ARTINSTANCE ART ON INS.INSID = ART.INSID ";
+	strSQL += " JOIN ART_STATE ARTSTATE ON ARTSTATE.ASTID = ART.ASTID ";
+	strSQL += " WHERE INS.INSID<>'"+InsID+"' ";
+	strSQL += " AND INS.ITEM9='"+LeaveApplierID+"'";	
+    strSQL += " AND ARTSTATE.NAME NOT IN('已發行','終止流程')";
+	
+	
+
+
+	
+	
+    return Client.SQLloadValue(strSQL)
+}
+
+function getLeaveTypeDataByLeaveTypeID(hdnSelectLeaveType) {
+    var strSQL = "";
+    strSQL += "SELECT *";
+    strSQL += " FROM SYN_HR_LeaveType";
+    strSQL += " WHERE LEAVE_ID='" + hdnSelectLeaveType + "'";
+    return Client.SQLloadValue(strSQL)
+}
+
+function getSubLeaveTypeDataBySubLeaveTypeID(hdnSelectSubLeaveType) {
+    var strSQL = "";
+    strSQL += "SELECT *";
+    strSQL += " FROM SYN_HR_SUBLEAVETYPE";
+    strSQL += " WHERE SUB_LEAVE_ID='" + hdnSelectSubLeaveType + "'";
+    return Client.SQLloadValue(strSQL)
+}

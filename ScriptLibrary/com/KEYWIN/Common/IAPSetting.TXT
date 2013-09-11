@@ -1,0 +1,27 @@
+//於智慧簽核節點的初始階段執行，若某部門ID有正、副主管2人，改由副主管簽核即可
+function setSubManager(){
+	loadLibrary("com.KEYWIN.Common.SystemConfig");
+	loadLibrary("com.KEYWIN.Common.FormUtil");
+	var strIapAuditList = MyTask.getIapAuditsString();
+	//logInfo("before setting: "+strIapAuditList, 1);
+	var sbResult = new java.lang.StringBuffer("");
+	var aryAuditRecord = new java.lang.String(strIapAuditList).replaceAll("\\[", "").split("\\]");
+	//logInfo("aryAuditRecord.length: "+aryAuditRecord.length, 1);
+	for(var i=0; i<aryAuditRecord.length; i++){
+		//logInfo("i:"+i, 1);
+		var aryAuditData = aryAuditRecord[i].split(",");
+		var strSQL = "select d.ID,d.memID,d.UserName,b.Name,b.DepID,b.ParentID,a.Name,a.RolID,a.SignLevel,a.Synopsis,d.Resign,b.Synopsis,b.ID ";
+		strSQL += " from Rol_GenInf a join Dep_GenInf b on a.DepID=b.DepID left join Rol_Mem c on a.RolID=c.RolID left join Mem_GenInf d on c.MemID=d.MemID ";
+		strSQL += " where b.DepID='"+aryAuditData[2]+"'  "; //DepID
+		strSQL += " and a.Synopsis like 'S1'";
+		logInfo(strSQL, 1);
+		var ds = getContext().SQLloadValue(strSQL);
+		if(ds.size()>0){ //表示有副主管
+			sbResult.append("[").append(ds.get(0).get("memID").toString()).append(",").append(ds.get(0).get("ROLID").toString()).append(",").append(ds.get(0).get("DEPID").toString()).append("]");
+		}else{
+			sbResult.append("[").append(aryAuditData[0]).append(",").append(aryAuditData[1]).append(",").append(aryAuditData[2]).append("]");
+		}
+	}
+	//logInfo("after setting: "+sbResult.toString(), 1);
+	MyTask.setIapAuditsString(sbResult.toString());
+}
